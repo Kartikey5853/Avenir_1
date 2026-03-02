@@ -1,6 +1,4 @@
-
-from dotenv import load_dotenv
-load_dotenv()
+from app.config import settings
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -8,21 +6,20 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 import logging
 
-#models
-from .database import Base, engine
-#from app.models.user import User
-#from app.models.otp import OTP
+from app.database import Base, engine
+from app.models.auth import User
+from app.models.otp import OTP
 #from app.models.profile import UserProfile
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 # Routers
-#from app.routers import users  
-#from app.routers import login  
+from app.routes import auth  
+
 
 
 Base.metadata.create_all(bind=engine)
 # ----------------------------------
-# Logging Configuration 
+# Centralized Logging Configuration (Production)
 # ----------------------------------
 logging.basicConfig(
     level=logging.INFO,
@@ -38,6 +35,9 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url=None
 )
+## Example usage of settings:
+# print(settings.DATABASE_URL)
+# print(settings.SECRET_KEY)
 
 # ----------------------------------
 # Global Exception Handlers
@@ -81,8 +81,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 # Include Routers
 # ----------------------------------
 
-#app.include_router(users.router, prefix="/api/users", tags=["Users"])
-#app.include_router(login.router, prefix="/api/users", tags=["Login"])
+
+app.include_router(auth.router, prefix="/api/users", tags=["Login"])
 # ----------------------------------
 # Health Check Route (Production Must)
 # ----------------------------------

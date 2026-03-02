@@ -1,21 +1,20 @@
-
-
-import os
-import logging
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.exc import SQLAlchemyError
+import logging
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Get database URL from environment variable, fallback to SQLite
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
+DATABASE_URL = settings.DATABASE_URL
 
 try:
     engine = create_engine(
         DATABASE_URL,
         connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {},
-        pool_pre_ping=True,  # helps with stale connections
+        pool_pre_ping=True,
+        pool_size=10,
+        max_overflow=20,
     )
     logger.info(f"Database engine created for {DATABASE_URL}")
 except SQLAlchemyError as e:
@@ -38,7 +37,7 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
-    except SQLAlchemyError as e: # checking for a session error here 
+    except SQLAlchemyError as e:
         logger.error(f"Database session error: {e}")
         raise
     finally:
