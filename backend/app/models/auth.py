@@ -24,5 +24,5 @@ class User(Base):
 
 
     # Relationship to profile
-    
+    profile = relationship("UserProfile", back_populates="user", uselist=False)
     otps = relationship("OTP", back_populates="user", cascade="all, delete-orphan")
