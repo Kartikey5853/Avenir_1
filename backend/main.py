@@ -1,9 +1,11 @@
 from app.config import settings
 
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.middleware.cors import CORSMiddleware
 import logging
 
 from app.database import Base, engine
@@ -34,6 +36,15 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url=None
+)
+
+# CORS middleware: allow all origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 ## Example usage of settings:
 # print(settings.DATABASE_URL)
