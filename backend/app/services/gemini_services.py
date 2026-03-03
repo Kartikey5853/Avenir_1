@@ -6,10 +6,9 @@ generic recommendation when the API is unavailable or over quota.
 
 import logging
 import httpx
-from app.config import get_settings
+from app.config import settings
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
 
 GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"

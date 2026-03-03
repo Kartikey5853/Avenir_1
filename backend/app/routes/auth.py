@@ -11,6 +11,7 @@ from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse
 from app.utils.security import hash_password, verify_password
 from app.utils.jwt import create_access_token, get_current_user
 from app.utils.otp import generate_otp
+from app.utils.email import send_otp_email
 from passlib.context import CryptContext
 
 router = APIRouter()
@@ -70,6 +71,13 @@ def register_user(payload: RegisterRequest, db: Session = Depends(get_db)):
         logging.info(
             f"Verification OTP for {new_user.email}: {verification_code}"
         )
+
+        # Send OTP via email
+        try:
+            send_otp_email(new_user.email, verification_code, purpose="email_verification")
+        except Exception as email_err:
+            logging.error(f"Could not send verification email to {new_user.email}: {email_err}")
+            # Don't fail registration if email sending fails
 
         logging.info(f"Registration process completed for {new_user.email}")
         return {
@@ -223,6 +231,13 @@ def login_user(payload: LoginRequest, db: Session = Depends(get_db)):
             db.add(otp_entry)
             db.commit()
             logging.info(f"2FA OTP for {user.email}: {otp_code}")
+
+            # Send 2FA OTP via email
+            try:
+                send_otp_email(user.email, otp_code, purpose="login_2fa")
+            except Exception as email_err:
+                logging.error(f"Could not send 2FA email to {user.email}: {email_err}")
+
             return {
                 "success": True,
                 "message": "OTP required for login",
@@ -331,3 +346,182 @@ def enable_2fa(
     db.commit()
     logging.info(f"2FA enabled for user: {current_user.email}")
     return {"success": True, "message": "2FA enabled"}
+
+
+@router.post("/disable-2fa")
+def disable_2fa(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    logging.info(f"Disable 2FA attempt for user: {current_user.email}")
+    current_user.two_factor_enabled = False
+    db.commit()
+    logging.info(f"2FA disabled for user: {current_user.email}")
+    return {"success": True, "message": "2FA disabled"}
+
+
+@router.post("/resend-verification")
+def resend_verification(
+    email: str,
+    db: Session = Depends(get_db)
+):
+    """Resend email verification OTP for a user who hasn't verified yet."""
+    logging.info(f"Resend verification OTP request for: {email}")
+    try:
+        user = db.query(User).filter(User.email == email.lower()).first()
+        if not user:
+            # Don't reveal whether the user exists
+            return {"success": True, "message": "If the account exists, a new code has been sent."}
+
+        if user.email_verified:
+            return {"success": True, "message": "Email is already verified."}
+
+        # Delete old OTP
+        db.query(OTP).filter(
+            OTP.user_id == user.id,
+            OTP.purpose == "email_verification"
+        ).delete()
+        db.commit()
+
+        new_code = generate_otp()
+        otp_entry = OTP(
+            user_id=user.id,
+            otp_code=new_code,
+            purpose="email_verification",
+            expires_at=datetime.utcnow() + timedelta(minutes=10),
+            attempts=0,
+            locked_until=None,
+        )
+        db.add(otp_entry)
+        db.commit()
+
+        try:
+            send_otp_email(user.email, new_code, purpose="email_verification")
+        except Exception as email_err:
+            logging.error(f"Could not resend verification email to {user.email}: {email_err}")
+
+        return {"success": True, "message": "If the account exists, a new code has been sent."}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logging.error(f"Resend verification error: {e}")
+        raise HTTPException(status_code=500, detail="Could not resend code")
+
+
+@router.post("/forgot-password")
+def forgot_password(
+    payload: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Step 1 of OTP-based password reset.
+    Accepts {"email": "..."}.
+    Creates a password_reset OTP and emails it to the user.
+    Always returns success to avoid revealing user existence.
+    """
+    email = payload.get("email", "").strip().lower()
+    logging.info(f"Forgot password request for: {email}")
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        if user:
+            # Delete old password_reset OTPs
+            db.query(OTP).filter(
+                OTP.user_id == user.id,
+                OTP.purpose == "password_reset"
+            ).delete()
+            db.commit()
+
+            reset_code = generate_otp()
+            otp_entry = OTP(
+                user_id=user.id,
+                otp_code=reset_code,
+                purpose="password_reset",
+                expires_at=datetime.utcnow() + timedelta(minutes=10),
+                attempts=0,
+                locked_until=None,
+            )
+            db.add(otp_entry)
+            db.commit()
+
+            logging.info(f"Password reset OTP for {user.email}: {reset_code}")
+
+            try:
+                send_otp_email(user.email, reset_code, purpose="password_reset")
+            except Exception as email_err:
+                logging.error(f"Could not send password reset email to {user.email}: {email_err}")
+
+        return {"success": True, "message": "If an account with that email exists, a reset code has been sent."}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logging.error(f"Forgot password error: {e}")
+        raise HTTPException(status_code=500, detail="Could not process request")
+
+
+@router.post("/reset-password-otp")
+def reset_password_otp(
+    payload: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Step 2 of OTP-based password reset.
+    Accepts {"email": "...", "otp_code": "...", "new_password": "..."}.
+    Verifies the OTP and updates the user's password.
+    """
+    email = payload.get("email", "").strip().lower()
+    otp_code = payload.get("otp_code", "").strip()
+    new_password = payload.get("new_password", "").strip()
+
+    logging.info(f"Password reset OTP verify attempt for: {email}")
+    try:
+        if not email or not otp_code or not new_password:
+            raise HTTPException(status_code=400, detail="email, otp_code, and new_password are required")
+
+        if len(new_password) < 6:
+            raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            raise HTTPException(status_code=400, detail="Invalid or expired code")
+
+        otp_entry = db.query(OTP).filter(
+            OTP.user_id == user.id,
+            OTP.purpose == "password_reset"
+        ).first()
+
+        if not otp_entry:
+            raise HTTPException(status_code=400, detail="Invalid or expired code")
+
+        if otp_entry.locked_until and otp_entry.locked_until > datetime.utcnow():
+            raise HTTPException(status_code=403, detail="Too many failed attempts. Try again later.")
+
+        if otp_entry.expires_at < datetime.utcnow():
+            db.delete(otp_entry)
+            db.commit()
+            raise HTTPException(status_code=400, detail="Code expired")
+
+        if otp_entry.otp_code != otp_code:
+            otp_entry.attempts += 1
+            if otp_entry.attempts >= otp_entry.max_attempts:
+                otp_entry.locked_until = datetime.utcnow() + timedelta(minutes=10)
+            db.commit()
+            raise HTTPException(status_code=400, detail="Invalid code")
+
+        # ✅ Valid – update password and delete OTP
+        user.password_hash = hash_password(new_password)
+        db.delete(otp_entry)
+        db.commit()
+
+        logging.info(f"Password reset successful for {email}")
+        return {"success": True, "message": "Password reset successfully. You can now log in."}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logging.error(f"Reset password OTP error: {e}")
+        raise HTTPException(status_code=500, detail="Password reset failed")

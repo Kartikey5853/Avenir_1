@@ -14,10 +14,11 @@ from app.models.otp import OTP
 #from app.models.profile import UserProfile
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-# Routers
-from app.routes import auth  
-
-
+from app.routes import auth
+from app.routes import area
+from app.routes import infrastructure
+from app.routes import profile
+from app.routes import scoring
 
 Base.metadata.create_all(bind=engine)
 # ----------------------------------
@@ -93,7 +94,12 @@ async def global_exception_handler(request: Request, exc: Exception):
 # ----------------------------------
 
 
+# Register all routers
 app.include_router(auth.router, prefix="/api/users", tags=["Login"])
+app.include_router(area.router, prefix="/api", tags=["Areas"])
+app.include_router(infrastructure.router, prefix="/api", tags=["Infrastructure"])
+app.include_router(profile.router, prefix="/api", tags=["Profile"])
+app.include_router(scoring.router, prefix="/api", tags=["Scoring"])
 # ----------------------------------
 # Health Check Route (Production Must)
 # ----------------------------------

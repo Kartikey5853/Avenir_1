@@ -10,10 +10,9 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
 from app.models.area import Area
 from app.models.infrastructure import InfrastructureData
-from app.config import get_settings
+from app.config import settings
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
 
 
 def build_overpass_query(lat: float, lon: float, radius: int) -> str:

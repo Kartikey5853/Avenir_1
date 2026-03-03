@@ -1,3 +1,4 @@
+
 from app.config import settings
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
@@ -11,11 +12,11 @@ from app.models.auth import User
 
 
 
-
 if not settings.SECRET_KEY:
     raise ValueError("SECRET_KEY is not set in environment variables")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
 
 
 def create_access_token(data: dict):
@@ -32,6 +33,8 @@ def verify_token(token: str):
     except JWTError:
         return None
     
+
+
 
 def get_current_user(
     token: str = Depends(oauth2_scheme),
@@ -54,4 +57,20 @@ def get_current_user(
     user = db.query(User).filter(User.id == int(user_id)).first()
     if user is None:
         raise credentials_exception
+    return user
+
+def get_optional_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            return None
+    except JWTError:
+        return None
+    user = db.query(User).filter(User.id == int(user_id)).first()
     return user
