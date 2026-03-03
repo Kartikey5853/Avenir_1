@@ -1,0 +1,312 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 209 25% 8%;
+
+    --card: 200 4% 97%;
+    --card-foreground: 209 25% 8%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 209 25% 8%;
+
+    --primary: 203 89% 53%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 14% 8%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 90%;
+    --muted-foreground: 209 25% 8%;
+
+    --accent: 210 47% 93%;
+    --accent-foreground: 203 89% 53%;
+
+    --destructive: 354 87% 54%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 200 19% 91%;
+    --input: 200 13% 97%;
+    --ring: 203 88% 53%;
+
+    --radius: 1.3rem;
+
+    --sidebar-background: 200 4% 97%;
+    --sidebar-foreground: 209 25% 8%;
+    --sidebar-primary: 203 89% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 47% 93%;
+    --sidebar-accent-foreground: 203 89% 53%;
+    --sidebar-border: 200 14% 91%;
+    --sidebar-ring: 203 88% 53%;
+
+    --chart-1: 203 89% 53%;
+    --chart-2: 160 100% 36%;
+    --chart-3: 42 93% 56%;
+    --chart-4: 145 78% 42%;
+    --chart-5: 340 73% 51%;
+
+    --transport: 203 89% 53%;
+    --hospital: 354 87% 54%;
+    --grocery: 145 78% 42%;
+    --restaurant: 42 93% 56%;
+    --school: 271 76% 53%;
+
+    --gradient-warm: linear-gradient(135deg, oklch(0.837 0.128 66.29) 0%, oklch(0.78 0.14 55) 100%);
+    --gradient-subtle: linear-gradient(135deg, hsl(200 4% 97%) 0%, hsl(210 47% 96%) 100%);
+    --shadow-card: 0 4px 16px 0 hsl(0 0% 0% / 0.06), 0 1px 3px 0 hsl(0 0% 0% / 0.04);
+    --shadow-card-hover: 0 8px 28px 0 hsl(0 0% 0% / 0.1), 0 2px 6px 0 hsl(0 0% 0% / 0.06);
+    --shadow-elevated: 0 12px 36px 0 hsl(0 0% 0% / 0.12);
+    --accent-glow: 0 0 15px rgba(59, 130, 246, 0.15);
+  }
+
+  .dark {
+    --background: 0 0% 0%;
+    --foreground: 210 5% 91%;
+
+    --card: 225 8% 7%;
+    --card-foreground: 0 0% 85%;
+
+    --popover: 0 0% 0%;
+    --popover-foreground: 210 5% 91%;
+
+    --primary: 31 100% 71%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 200 3% 95%;
+    --secondary-foreground: 209 25% 8%;
+
+    --muted: 0 0% 9%;
+    --muted-foreground: 210 3% 46%;
+
+    --accent: 208 71% 8%;
+    --accent-foreground: 203 89% 53%;
+
+    --destructive: 354 87% 54%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 5% 15%;
+    --input: 207 28% 18%;
+    --ring: 203 88% 53%;
+
+    --sidebar-background: 225 8% 10%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 203 88% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 208 71% 8%;
+    --sidebar-accent-foreground: 203 89% 53%;
+    --sidebar-border: 207 14% 26%;
+    --sidebar-ring: 203 88% 53%;
+
+    --chart-1: 203 89% 53%;
+    --chart-2: 160 100% 36%;
+    --chart-3: 42 93% 56%;
+    --chart-4: 145 78% 42%;
+    --chart-5: 340 73% 51%;
+
+    --gradient-warm: linear-gradient(135deg, oklch(0.837 0.128 66.29) 0%, oklch(0.78 0.14 55) 100%);
+    --gradient-subtle: linear-gradient(135deg, hsl(225 8% 10%) 0%, hsl(208 71% 12%) 100%);
+    --shadow-card: 0 4px 20px 0 rgba(0,0,0,0.35), 0 1px 4px 0 rgba(0,0,0,0.2);
+    --shadow-card-hover: 0 12px 35px 0 rgba(0,0,0,0.5), 0 2px 8px 0 rgba(0,0,0,0.3);
+    --shadow-elevated: 0 16px 48px 0 rgba(0,0,0,0.55);
+    --accent-glow: 0 0 15px rgba(246,166,84,0.2);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Open Sans', sans-serif;
+    letter-spacing: 0em;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold;
+    font-family: 'Open Sans', sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  /* Stronger section headings */
+  h1 { @apply text-2xl md:text-3xl lg:text-4xl tracking-tight; }
+  h2 { @apply text-lg md:text-xl tracking-tight; }
+}
+
+@layer utilities {
+  .gradient-warm {
+    background: var(--gradient-warm);
+  }
+
+  .gradient-subtle {
+    background: var(--gradient-subtle);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-card-hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .accent-glow {
+    box-shadow: var(--accent-glow);
+  }
+
+  /* Section heading with subtle divider */
+  .section-heading {
+    @apply font-semibold text-lg md:text-xl pb-2 mb-4;
+    border-bottom: 1px solid hsl(var(--border));
+  }
+
+  /* Premium card with depth */
+  .card-elevated {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-card);
+    transition: all 0.2s ease;
+  }
+  .card-elevated:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  /* Interactive element with hover lift */
+  .hover-lift {
+    transition: all 0.2s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  /* Accent glow on focus/active */
+  .glow-on-active:focus-within,
+  .glow-on-active[data-state="open"] {
+    box-shadow: var(--accent-glow);
+    border-color: hsl(var(--primary));
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+
+/* ─── Dock styles ─── */
+.dock-outer {
+  margin: 0 0.5rem;
+  display: flex;
+  max-width: 100%;
+  align-items: center;
+}
+
+.dock-panel {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-end;
+  width: fit-content;
+  gap: 1rem;
+  border-radius: 1rem;
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  padding: 0 0.5rem 0.5rem;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.dock-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.dock-item:hover {
+  box-shadow: var(--accent-glow), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-color: hsl(var(--primary));
+}
+
+.dock-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dock-label {
+  position: absolute;
+  top: -1.5rem;
+  left: 50%;
+  width: fit-content;
+  white-space: pre;
+  border-radius: 0.375rem;
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--card));
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  color: hsl(var(--foreground));
+  transform: translateX(-50%);
+}
+
+/* ─── Leaflet overrides ─── */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  border-radius: var(--radius);
+}
+
+/* ─── Global card hover transitions ─── */
+.bg-card {
+  transition: all 0.2s ease;
+}
+
+/* ─── Select dropdown glow ─── */
+[data-radix-popper-content-wrapper] [role="listbox"] {
+  box-shadow: var(--shadow-elevated);
+}
+
+/* ─── Table row hover ─── */
+table tbody tr {
+  transition: background-color 0.15s ease;
+}
+table tbody tr:hover {
+  background-color: hsl(var(--accent));
+}
