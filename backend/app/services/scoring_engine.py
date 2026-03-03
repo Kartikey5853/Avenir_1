@@ -1,194 +1,215 @@
 """
-Scoring Engine – computes lifestyle scores for areas based on infrastructure
-data and user profile preferences.
+Density-based scoring engine calibrated for Indian cities.
 
-Scoring steps:
-1. Compute raw category scores from infrastructure counts
-2. Normalize to 0–100 scale
-3. Generate weight matrix (default or profile-based)
-4. Compute weighted final score
+Score = weighted sum of five composite categories, each normalised against
+an Indian-city calibrated saturation threshold.
+
+Target: Bandra Mumbai (2 km radius) -> overall score approximately 72-78.
+
+Composites
+----------
+safety     = hospitals(50 %) + police(30 %) + fire(20 %)
+family     = schools(70 %)   + parks(30 %)
+transport  = bus(70 %)       + metro(20 %) + train(10 %)
+lifestyle  = restaurants(35 %)+ cafes(25 %) + gyms(20 %) + bars(20 %)
+grocery    = supermarkets(100 %)
+
+Default weights
+---------------
+safety: 0.25, family: 0.20, transport: 0.25, lifestyle: 0.20, grocery: 0.10
 """
 
-from app.models.infrastructure import InfrastructureData
-from app.models.profile import UserProfile
+from __future__ import annotations
 
+import math
+from typing import Optional
 
-# ─── Default weights (used when no user profile exists) ───
-DEFAULT_WEIGHTS = {
+# Saturation thresholds (count / km²) – calibrated for Indian cities.
+# At this density the sub-score caps at 1.0 (linear saturation).
+# Philosophy: a density AT or ABOVE the threshold earns full points;
+#             below it earns a proportional fraction.
+_T = {
+    "hospitals":     1.5,   # hospitals + clinics
+    "schools":       3.0,
+    "police":        0.5,
+    "fire":          0.25,
+    "parks":         2.0,
+    "bus_stops":     5.0,   # ~63 stops in 2 km radius = full score
+    "metro":         0.4,
+    "trains":        0.25,
+    "supermarkets":  4.0,
+    "restaurants":   6.0,   # ~75 restaurants in 2 km radius = full score
+    "cafes":         5.0,
+    "gyms":          2.0,
+    "bars":          2.5,
+}
+
+# Profile -> weight delta map
+_PROFILE_WEIGHT_DELTAS: dict[str, dict[str, float]] = {
+    "has_children":        {"family": +0.10, "safety": +0.05, "lifestyle": -0.10, "grocery": -0.05},
+    "is_senior":           {"safety": +0.10, "transport": +0.05, "lifestyle": -0.10, "grocery": -0.05},
+    "values_nightlife":    {"lifestyle": +0.15, "grocery": -0.05, "family": -0.10},
+    "is_fitness_focused":  {"lifestyle": +0.05, "family": +0.05, "grocery": -0.05, "safety": -0.05},
+    "no_car":              {"transport": +0.15, "lifestyle": -0.05, "grocery": -0.05, "family": -0.05},
+    "grocery_priority":    {"grocery": +0.10, "lifestyle": -0.05, "family": -0.05},
+    "safety_priority":     {"safety": +0.15, "lifestyle": -0.10, "grocery": -0.05},
+}
+
+DEFAULT_WEIGHTS: dict[str, float] = {
+    "safety":    0.25,
+    "family":    0.20,
     "transport": 0.25,
-    "healthcare": 0.20,
-    "education": 0.20,
     "lifestyle": 0.20,
-    "grocery": 0.15,
-}
-
-# ─── Normalization caps (used to scale raw scores to 0–100) ───
-# These represent the "expected max" for each raw score in a well-served area
-SCORE_CAPS = {
-    "transport": 100,   # metro*5 + bus*2 → cap at 100
-    "healthcare": 80,   # hospital*4 → cap at 80
-    "education": 60,    # school*3 → cap at 60
-    "lifestyle": 100,   # restaurant*2 → cap at 100
-    "grocery": 40,      # supermarket*2 → cap at 40
+    "grocery":   0.10,
 }
 
 
-def compute_raw_scores(infra: InfrastructureData) -> dict[str, float]:
-    """
-    Step 1: Compute raw category scores from infrastructure counts.
+def _density(count: int, radius_m: int) -> float:
+    area_km2 = math.pi * (radius_m / 1000.0) ** 2
+    return count / area_km2
 
-    Formulas:
-    - Transport = metro_count * 5 + bus_stop_count * 2
-    - Healthcare = hospital_count * 4
-    - Education = school_count * 3
-    - Lifestyle = restaurant_count * 2
-    - Grocery = supermarket_count * 2
-    """
+
+def _saturate(density: float, threshold: float) -> float:
+    """Linear saturation: score = density/threshold, capped at 1.0."""
+    if threshold <= 0:
+        return 0.0
+    return min(1.0, density / threshold)
+
+
+def _weights_for_profile(profile: Optional[dict]) -> dict[str, float]:
+    w = dict(DEFAULT_WEIGHTS)
+    if profile:
+        for flag, deltas in _PROFILE_WEIGHT_DELTAS.items():
+            if profile.get(flag):
+                for cat, delta in deltas.items():
+                    w[cat] = w.get(cat, 0.0) + delta
+    w = {k: max(0.02, v) for k, v in w.items()}
+    total = sum(w.values())
+    return {k: v / total for k, v in w.items()}
+
+
+def _safety_score(counts: dict, radius_m: int) -> float:
+    hosp  = _saturate(_density(counts.get("hospital_count", 0),      radius_m), _T["hospitals"])
+    pol   = _saturate(_density(counts.get("police_count", 0),         radius_m), _T["police"])
+    fire  = _saturate(_density(counts.get("fire_station_count", 0),   radius_m), _T["fire"])
+    return 0.50 * hosp + 0.30 * pol + 0.20 * fire
+
+
+def _family_score(counts: dict, radius_m: int) -> float:
+    sch  = _saturate(_density(counts.get("school_count", 0),  radius_m), _T["schools"])
+    park = _saturate(_density(counts.get("park_count", 0),    radius_m), _T["parks"])
+    return 0.70 * sch + 0.30 * park
+
+
+def _transport_score(counts: dict, radius_m: int) -> float:
+    bus   = _saturate(_density(counts.get("bus_stop_count", 0),      radius_m), _T["bus_stops"])
+    metro = _saturate(_density(counts.get("metro_count", 0),          radius_m), _T["metro"])
+    train = _saturate(_density(counts.get("train_station_count", 0),  radius_m), _T["trains"])
+    return 0.70 * bus + 0.20 * metro + 0.10 * train
+
+
+def _lifestyle_score(counts: dict, radius_m: int) -> float:
+    rest  = _saturate(_density(counts.get("restaurant_count", 0), radius_m), _T["restaurants"])
+    cafe  = _saturate(_density(counts.get("cafe_count", 0),        radius_m), _T["cafes"])
+    gym   = _saturate(_density(counts.get("gym_count", 0),         radius_m), _T["gyms"])
+    bar   = _saturate(_density(counts.get("bar_count", 0),         radius_m), _T["bars"])
+    return 0.35 * rest + 0.25 * cafe + 0.20 * gym + 0.20 * bar
+
+
+def _grocery_score(counts: dict, radius_m: int) -> float:
+    sup = _saturate(_density(counts.get("supermarket_count", 0), radius_m), _T["supermarkets"])
+    return sup
+
+
+def compute_subscores(counts: dict, radius_m: int) -> dict[str, float]:
     return {
-        "transport": infra.metro_count * 5 + infra.bus_stop_count * 2,
-        "healthcare": infra.hospital_count * 4,
-        "education": infra.school_count * 3,
-        "lifestyle": infra.restaurant_count * 2,
-        "grocery": infra.supermarket_count * 2,
+        "safety":    round(_safety_score(counts, radius_m)    * 100, 1),
+        "family":    round(_family_score(counts, radius_m)     * 100, 1),
+        "transport": round(_transport_score(counts, radius_m)  * 100, 1),
+        "lifestyle": round(_lifestyle_score(counts, radius_m)  * 100, 1),
+        "grocery":   round(_grocery_score(counts, radius_m)    * 100, 1),
     }
-
-
-def normalize_scores(raw: dict[str, float]) -> dict[str, float]:
-    """
-    Step 2: Normalize raw scores to 0–100 scale.
-    Uses SCORE_CAPS as the reference maximum. Values are clamped to [0, 100].
-    """
-    normalized = {}
-    for key, value in raw.items():
-        cap = SCORE_CAPS.get(key, 100)
-        score = min((value / cap) * 100, 100) if cap > 0 else 0
-        normalized[key] = round(score, 2)
-    return normalized
-
-
-def generate_weights(profile: UserProfile | None) -> tuple[dict[str, float], list[str]]:
-    """
-    Step 3: Generate weight matrix based on user profile.
-
-    If no profile → use DEFAULT_WEIGHTS.
-    If profile exists → adjust weights based on:
-    - has_parents = True → increase healthcare weight (+0.10)
-    - employment_status = working → increase transport weight (+0.08)
-    - marital_status = single → increase lifestyle weight (+0.08)
-    - marital_status = married → increase education weight (+0.08)
-    - employment_status = student → increase education weight (+0.05)
-
-    Weights are always normalized to sum to 1.0.
-    """
-    adjustments: list[str] = []
-
-    if profile is None:
-        return DEFAULT_WEIGHTS.copy(), ["Using default weights (no profile)"]
-
-    weights = DEFAULT_WEIGHTS.copy()
-
-    # ── Profile-based adjustments ──
-    if profile.has_parents:
-        weights["healthcare"] += 0.10
-        adjustments.append("Living with parents → Healthcare weight increased (+0.10)")
-
-    # Has elderly people → healthcare goes up
-    if profile.has_elderly:
-        weights["healthcare"] += 0.12
-        adjustments.append("Lives with elderly → Healthcare weight increased (+0.12)")
-
-    # Has children → education goes up
-    if profile.has_children:
-        weights["education"] += 0.10
-        adjustments.append("Has children → Education weight increased (+0.10)")
-
-    # Has vehicle → transport weight goes down
-    if profile.has_vehicle:
-        weights["transport"] -= 0.08
-        if weights["transport"] < 0.05:
-            weights["transport"] = 0.05
-        adjustments.append("Has vehicle → Transport weight decreased (-0.08)")
-
-    if profile.employment_status == "working":
-        weights["transport"] += 0.08
-        adjustments.append("Employed (working) → Transport weight increased (+0.08)")
-    elif profile.employment_status == "student":
-        weights["education"] += 0.05
-        weights["transport"] += 0.03
-        adjustments.append("Student → Education weight increased (+0.05), Transport +0.03")
-
-    if profile.marital_status == "single":
-        weights["lifestyle"] += 0.08
-        adjustments.append("Single → Lifestyle weight increased (+0.08)")
-    elif profile.marital_status == "married":
-        weights["education"] += 0.08
-        weights["grocery"] += 0.04
-        adjustments.append("Married → Education weight increased (+0.08), Grocery +0.04")
-
-    # ── Normalize weights to sum to 1.0 ──
-    total = sum(weights.values())
-    if total > 0:
-        weights = {k: round(v / total, 4) for k, v in weights.items()}
-
-    if not adjustments:
-        adjustments.append("Profile exists but no specific adjustments triggered")
-
-    return weights, adjustments
 
 
 def compute_final_score(
-    infra: InfrastructureData,
-    profile: UserProfile | None = None,
+    counts: dict,
+    profile: Optional[dict] = None,
+    radius: int = 2000,
 ) -> dict:
     """
-    Main scoring function. Returns a complete score breakdown.
+    Compute final livability score.
 
-    Returns dict with:
-    - category_scores: normalized 0-100 scores per category
-    - weights_used: the weight applied to each category
-    - final_score: weighted sum (0-100)
-    - infrastructure: raw counts
-    - profile_context: how profile influenced weights (if applicable)
+    Parameters
+    ----------
+    counts  : dict with keys like "hospital_count", "school_count", etc.
+              Can be a plain dict or an ORM InfrastructureData object.
+    profile : dict of boolean profile flags (e.g. {"has_children": True}).
+    radius  : search radius in metres.
     """
-    # Step 1 & 2: Raw → Normalized scores
-    raw = compute_raw_scores(infra)
-    normalized = normalize_scores(raw)
+    if not isinstance(counts, dict):
+        counts = {
+            col: getattr(counts, col, 0) or 0
+            for col in (
+                "hospital_count", "school_count", "police_count",
+                "fire_station_count", "park_count",
+                "bus_stop_count", "metro_count", "train_station_count",
+                "supermarket_count", "restaurant_count",
+                "cafe_count", "gym_count", "bar_count",
+            )
+        }
 
-    # Step 3: Generate weights
-    weights, adjustments = generate_weights(profile)
+    weights = _weights_for_profile(profile)
 
-    # Step 4: Weighted final score
-    final = sum(normalized[k] * weights[k] for k in normalized)
-    final = round(min(final, 100), 2)
-
-    result = {
-        "category_scores": normalized,
-        "weights_used": weights,
-        "final_score": final,
-        "infrastructure": {
-            "hospitals": infra.hospital_count,
-            "schools": infra.school_count,
-            "bus_stops": infra.bus_stop_count,
-            "metro_stations": infra.metro_count,
-            "supermarkets": infra.supermarket_count,
-            "restaurants": infra.restaurant_count,
-            "gyms": getattr(infra, "gym_count", 0),
-            "bars": getattr(infra, "bar_count", 0),        },
+    subs = {
+        "safety":    _safety_score(counts, radius),
+        "family":    _family_score(counts, radius),
+        "transport": _transport_score(counts, radius),
+        "lifestyle": _lifestyle_score(counts, radius),
+        "grocery":   _grocery_score(counts, radius),
     }
 
-    # Add profile context if profile exists
-    if profile:
-        result["profile_context"] = {
-            "marital_status": profile.marital_status,
-            "has_parents": profile.has_parents,
-            "employment_status": profile.employment_status,
-            "has_vehicle": getattr(profile, "has_vehicle", False),
-            "has_elderly": getattr(profile, "has_elderly", False),
-            "has_children": getattr(profile, "has_children", False),
-            "income_range": getattr(profile, "income_range", None),
-            "adjustments": adjustments,
-        }
-    else:
-        result["profile_context"] = None
+    raw = sum(weights[k] * v for k, v in subs.items())
+    overall = round(min(100.0, max(0.0, raw * 100)), 1)
+    category_scores = {k: round(v * 100, 1) for k, v in subs.items()}
+    highlights, concerns = _generate_insights(category_scores)
 
-    return result
+    return {
+        "overall_score":   overall,
+        "category_scores": category_scores,
+        "weights":         {k: round(v, 3) for k, v in weights.items()},
+        "summary":         _summary_text(overall),
+        "highlights":      highlights,
+        "concerns":        concerns,
+    }
+
+
+_CATEGORY_LABELS = {
+    "safety":    "Safety (hospitals, police, fire)",
+    "family":    "Family (schools, parks)",
+    "transport": "Transport (bus, metro, train)",
+    "lifestyle": "Lifestyle (restaurants, cafes, gyms, bars)",
+    "grocery":   "Groceries (supermarkets)",
+}
+
+
+def _generate_insights(category_scores: dict[str, float]):
+    highlights, concerns = [], []
+    for cat, score in sorted(category_scores.items(), key=lambda x: x[1], reverse=True):
+        label = _CATEGORY_LABELS.get(cat, cat)
+        if score >= 70:
+            highlights.append(f"Strong {label} ({score:.0f}/100)")
+        elif score < 40:
+            concerns.append(f"Limited {label} ({score:.0f}/100)")
+    return highlights, concerns
+
+
+def _summary_text(score: float) -> str:
+    if score >= 80:
+        return "Excellent livability - this area has outstanding infrastructure."
+    if score >= 65:
+        return "Good livability - well-served area with most amenities nearby."
+    if score >= 50:
+        return "Moderate livability - some amenities present but notable gaps."
+    if score >= 35:
+        return "Below-average livability - limited infrastructure nearby."
+    return "Poor livability - significantly underserved area."

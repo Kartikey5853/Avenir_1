@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     SMTP_USER: str
     SMTP_PASSWORD: str
 
+    CACHE_TTL_HOURS: int = 24
+
     class Config:
         env_file = ".env"
 

@@ -44,6 +44,9 @@ def send_otp_email(to_email: str, otp_code: str, purpose: str = "email_verificat
     message["From"] = smtp_user
     message["To"] = to_email
 
+    # [DEV] Print OTP to console so development works without a real SMTP server
+    print(f"[DEV] OTP for {to_email} ({purpose}): {otp_code}")
+
     try:
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.starttls()
