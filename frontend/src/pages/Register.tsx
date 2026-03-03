@@ -1,114 +1,89 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { registerUser } from '@/services/api';
-import ShaderBackground from '@/components/ui/shader-background';
-import ShinyText from '@/components/ShinyText';
+import { loginUser, registerUser } from '@/services/api';
+import { AuthUI } from '@/components/ui/auth-fuse';
+import { OtpVerifyScreen } from '@/pages/OtpVerify';
 
 const Register = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [signInLoading, setSignInLoading] = useState(false);
+  const [signUpLoading, setSignUpLoading] = useState(false);
+  const [otpStep, setOtpStep] = useState<{ email: string; purpose: 'email_verification' | 'login_2fa' } | null>(null);
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password !== confirm) {
-      toast({ title: 'Error', description: 'Passwords do not match.', variant: 'destructive' });
-      return;
-    }
-    setLoading(true);
+  const handleSignIn = async (email: string, password: string) => {
+    setSignInLoading(true);
     try {
-      const res = await registerUser(name, email, password);
-      const { access_token, user } = res.data;
+      const res = await loginUser(email, password);
+      const data = res.data;
+      if (data.otp_required) {
+        setOtpStep({ email, purpose: 'login_2fa' });
+        toast({ title: '2FA Required', description: 'A 6-digit code has been sent to your email.' });
+        return;
+      }
+      const { access_token, user } = data;
       localStorage.setItem('avenir_token', access_token);
       localStorage.setItem('avenir_user', JSON.stringify(user));
-      toast({ title: 'Account created!', description: 'Let\'s set up your profile.' });
-      navigate('/profile-setup');
+      toast({ title: 'Welcome back!', description: 'Logged in successfully.' });
+      navigate(user.is_profile_completed ? '/dashboard' : '/profile-setup');
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Invalid credentials.';
+      toast({ title: 'Login failed', description: msg, variant: 'destructive' });
+    } finally {
+      setSignInLoading(false);
+    }
+  };
+
+  const handleSignUp = async (name: string, email: string, password: string) => {
+    setSignUpLoading(true);
+    try {
+      await registerUser(name, email, password);
+      setOtpStep({ email, purpose: 'email_verification' });
+      toast({ title: 'Account created!', description: 'Check your email for the verification code.' });
     } catch (err: any) {
       const msg = err.response?.data?.detail || 'Registration failed.';
       toast({ title: 'Registration failed', description: msg, variant: 'destructive' });
     } finally {
-      setLoading(false);
+      setSignUpLoading(false);
     }
   };
+
+  const handleOtpSuccess = (data: any) => {
+    if (otpStep?.purpose === 'login_2fa') {
+      const { access_token, user } = data;
+      localStorage.setItem('avenir_token', access_token);
+      localStorage.setItem('avenir_user', JSON.stringify(user));
+      toast({ title: 'Welcome back!', description: 'Logged in successfully.' });
+      navigate(user.is_profile_completed ? '/dashboard' : '/profile-setup');
+    } else {
+      toast({ title: 'Email verified!', description: 'You can now sign in.' });
+      setOtpStep(null);
+    }
+  };
+
+  if (otpStep) {
+    return (
+      <OtpVerifyScreen
+        email={otpStep.email}
+        purpose={otpStep.purpose}
+        onSuccess={handleOtpSuccess}
+        onBack={() => setOtpStep(null)}
+      />
+    );
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
-      <ShaderBackground />
-
-      <div className="w-full max-w-md animate-slide-up relative z-10">
-        <div className="text-center mb-8">
-          <ShinyText
-            text="Avenir"
-            speed={3}
-            className="font-bold text-5xl mb-3"
-            color="oklch(0.637 0.128 66.29)"
-            shineColor="oklch(0.937 0.128 66.29)"
-            spread={120}
-            direction="left"
-            yoyo
-          />
-          <p className="text-white/60 text-sm">Create an account to get started</p>
-        </div>
-
-        <form
-          onSubmit={handleRegister}
-          className="rounded-2xl p-8 space-y-5 border"
-          style={{
-            background: 'rgba(0, 0, 0, 0.75)',
-            borderColor: 'rgba(255, 255, 255, 0.08)',
-            backdropFilter: 'blur(24px)',
-            boxShadow: '0 16px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)',
-          }}
-        >
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-white/80">Full Name</label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-              <Input placeholder="Arjun Patel" value={name} onChange={(e) => setName(e.target.value)} className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-orange-400/50 focus:ring-orange-400/20" required />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-white/80">Email</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-              <Input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-orange-400/50 focus:ring-orange-400/20" required />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-white/80">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-              <Input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-orange-400/50 focus:ring-orange-400/20" required />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-white/80">Confirm Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-              <Input type="password" placeholder="••••••••" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-orange-400/50 focus:ring-orange-400/20" required />
-            </div>
-          </div>
-
-          <Button type="submit" className="w-full gradient-warm text-white font-semibold h-11 text-sm tracking-wide" disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRight className="h-4 w-4 mr-2" />}
-            Create Account
-          </Button>
-
-          <p className="text-center text-sm text-white/50">
-            Already have an account?{' '}
-            <Link to="/login" className="text-orange-300 font-medium hover:text-orange-200 hover:underline transition-colors">Sign in</Link>
-          </p>
-        </form>
-      </div>
-    </div>
+    <AuthUI
+      onSignIn={handleSignIn}
+      onSignUp={handleSignUp}
+      signInLoading={signInLoading}
+      signUpLoading={signUpLoading}
+      defaultTab="signup"
+    />
   );
 };
 
 export default Register;
+

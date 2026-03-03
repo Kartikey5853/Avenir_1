@@ -1,19 +1,29 @@
 import axios from 'axios';
 
-const api = axios.create({
-  baseURL: 'http://localhost:8000',
+const BASE = 'http://localhost:8000';
+
+// ─── Auth instance: /api/users/* ───
+const authApi = axios.create({
+  baseURL: `${BASE}/api/users`,
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Attach JWT automatically
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('avenir_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
+// ─── Main instance: /api/* (areas, profile, scoring, market) ───
+const api = axios.create({
+  baseURL: `${BASE}/api`,
+  headers: { 'Content-Type': 'application/json' },
 });
 
+// JWT interceptors on both instances
+const attachJwt = (config: any) => {
+  const token = localStorage.getItem('avenir_token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+};
+api.interceptors.request.use(attachJwt);
+authApi.interceptors.request.use(attachJwt);
+
+// 401 global redirect
 api.interceptors.response.use(
   (res) => res,
   (error) => {
@@ -23,26 +33,45 @@ api.interceptors.response.use(
       window.location.href = '/login';
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;
 
-// ─── Auth ───
+// ─── Auth ───────────────────────────────────────────────────────────────────
+
 export const loginUser = (email: string, password: string) =>
-  api.post('/login', { email, password });
+  authApi.post('/login', { email, password });
 
 export const registerUser = (name: string, email: string, password: string) =>
-  api.post('/register', { name, email, password });
+  authApi.post('/register', { name, email, password });
 
+/** Verify email address after registration (uses query params per backend spec) */
+export const verifyEmail = (email: string, otp_code: string) =>
+  authApi.post(`/verify-email?email=${encodeURIComponent(email)}&otp_code=${encodeURIComponent(otp_code)}`);
+
+/** Verify 2FA OTP after login (uses query params per backend spec) */
+export const verifyLoginOtp = (email: string, otp_code: string) =>
+  authApi.post(`/verify-login-otp?email=${encodeURIComponent(email)}&otp_code=${encodeURIComponent(otp_code)}`);
+
+/** Resend email-verification OTP */
+export const resendVerification = (email: string) =>
+  authApi.post(`/resend-verification?email=${encodeURIComponent(email)}`);
+
+/** Step 1 of password reset: send OTP to email */
 export const forgotPassword = (email: string) =>
-  api.post('/forgot-password', { email });
+  authApi.post('/forgot-password', { email });
+
+/** Step 2 of password reset: verify OTP and set new password */
+export const resetPasswordOtp = (email: string, otp_code: string, new_password: string) =>
+  authApi.post('/reset-password-otp', { email, otp_code, new_password });
 
 export const resetPassword = (token: string, new_password: string) =>
-  api.post('/reset-password', { token, new_password });
+  authApi.post('/reset-password', { token, new_password });
 
-// ─── Profile ───
-export const getProfile = () => api.get('/profile');
+// ─── Profile ────────────────────────────────────────────────────────────────
+
+export const getProfile = () => api.get('/users/profile');
 
 export const createProfile = (data: {
   marital_status: string;
@@ -54,7 +83,7 @@ export const createProfile = (data: {
   has_elderly?: boolean;
   has_children?: boolean;
   profile_picture?: string;
-}) => api.post('/profile', data);
+}) => api.post('/users/profile', data);
 
 export const updateProfile = (data: {
   marital_status?: string;
@@ -66,23 +95,27 @@ export const updateProfile = (data: {
   has_elderly?: boolean;
   has_children?: boolean;
   profile_picture?: string;
-}) => api.put('/profile', data);
+}) => api.put('/users/profile', data);
 
 export const changePassword = (current_password: string, new_password: string) =>
-  api.post('/profile/change-password', { current_password, new_password });
+  api.post('/users/profile/change-password', { current_password, new_password });
 
-// ─── Areas ───
+// ─── Areas ──────────────────────────────────────────────────────────────────
+
 export const getAreas = () => api.get('/areas');
 export const getArea = (id: number) => api.get(`/areas/${id}`);
 
-// ─── Infrastructure ───
-export const getAreaInfrastructure = (id: number) => api.get(`/areas/${id}/infrastructure`);
-export const getAreaInfrastructureLocations = (id: number) => api.get(`/areas/${id}/infrastructure/locations`);
+// ─── Infrastructure ──────────────────────────────────────────────────────────
 
-// ─── Scoring ───
+export const getAreaInfrastructure = (id: number) => api.get(`/areas/${id}/infrastructure`);
+export const getAreaInfrastructureLocations = (id: number) =>
+  api.get(`/areas/${id}/infrastructure/locations`);
+
+// ─── Scoring ────────────────────────────────────────────────────────────────
+
 export const getAreaScore = (id: number) => api.get(`/areas/${id}/score`);
 export const getCustomScore = (lat: number, lon: number, radius: number) =>
-  api.get(`/areas/score/custom`, { params: { lat, lon, radius } });
+  api.get('/areas/score/custom', { params: { lat, lon, radius } });
 
 export const getAIRecommendation = (data: {
   locality_name: string;
@@ -92,7 +125,8 @@ export const getAIRecommendation = (data: {
   profile_context: Record<string, unknown> | null;
 }) => api.post('/areas/score/recommend', data);
 
-// ─── Market Data ───
+// ─── Market Data ────────────────────────────────────────────────────────────
+
 export const getMarketListings = (area?: string) =>
   api.get('/market/listings', { params: area ? { area } : {} });
 
