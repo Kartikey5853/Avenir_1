@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE = 'http://localhost:8000';
+const BASE = 'https://avenir1-0.onrender.com';
 
 // ─── Auth instance: /api/users/* ───
 const authApi = axios.create({
