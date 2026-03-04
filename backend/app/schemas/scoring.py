@@ -23,4 +23,5 @@ class ScoreResponse(BaseModel):
     summary:         str
     highlights:      list[str]
     concerns:        list[str]
+    counts:          Optional[dict[str, int]] = None   # raw facility counts
     radius_m:        Optional[int] = None

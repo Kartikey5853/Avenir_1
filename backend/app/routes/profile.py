@@ -44,14 +44,10 @@ def create_profile(
 
     profile = UserProfile(
         user_id=current_user.id,
-        marital_status=req.marital_status,
-        has_parents=req.has_parents,
-        employment_status=req.employment_status,
-        income_range=req.income_range,
-        additional_info=req.additional_info,
-        has_vehicle=req.has_vehicle,
-        has_elderly=req.has_elderly,
         has_children=req.has_children,
+        relies_on_public_transport=req.relies_on_public_transport,
+        prefers_vibrant_lifestyle=req.prefers_vibrant_lifestyle,
+        safety_priority=req.safety_priority,
         profile_picture=req.profile_picture,
     )
     db.add(profile)
@@ -78,9 +74,9 @@ def update_profile(
 
     # Update only provided fields
     for field in [
-        "marital_status", "has_parents", "employment_status",
-        "income_range", "additional_info", "has_vehicle",
-        "has_elderly", "has_children", "profile_picture",
+        "has_children", "relies_on_public_transport",
+        "prefers_vibrant_lifestyle", "safety_priority",
+        "profile_picture",
     ]:
         value = getattr(req, field, None)
         if value is not None:

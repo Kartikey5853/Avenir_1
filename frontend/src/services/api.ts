@@ -8,13 +8,19 @@ const authApi = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// ─── Main instance: /api/* (areas, profile, scoring, market) ───
+// ─── Main instance: /api/* (areas, scoring, market) ───
 const api = axios.create({
   baseURL: `${BASE}/api`,
   headers: { 'Content-Type': 'application/json' },
 });
 
-// JWT interceptors on both instances
+// ─── Profile instance: /api/profile/* ───
+const profileApi = axios.create({
+  baseURL: `${BASE}/api/profile`,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+// JWT interceptors on all instances
 const attachJwt = (config: any) => {
   const token = localStorage.getItem('avenir_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -22,6 +28,7 @@ const attachJwt = (config: any) => {
 };
 api.interceptors.request.use(attachJwt);
 authApi.interceptors.request.use(attachJwt);
+profileApi.interceptors.request.use(attachJwt);
 
 // 401 global redirect
 api.interceptors.response.use(
@@ -37,6 +44,7 @@ api.interceptors.response.use(
 );
 
 export default api;
+export { profileApi };
 
 // ─── Auth ───────────────────────────────────────────────────────────────────
 
@@ -71,7 +79,7 @@ export const resetPassword = (token: string, new_password: string) =>
 
 // ─── Profile ────────────────────────────────────────────────────────────────
 
-export const getProfile = () => api.get('/users/profile');
+export const getProfile = () => profileApi.get('/');
 
 export const createProfile = (data: {
   marital_status: string;
@@ -83,7 +91,7 @@ export const createProfile = (data: {
   has_elderly?: boolean;
   has_children?: boolean;
   profile_picture?: string;
-}) => api.post('/users/profile', data);
+}) => profileApi.post('/', data);
 
 export const updateProfile = (data: {
   marital_status?: string;
@@ -95,10 +103,10 @@ export const updateProfile = (data: {
   has_elderly?: boolean;
   has_children?: boolean;
   profile_picture?: string;
-}) => api.put('/users/profile', data);
+}) => profileApi.put('/', data);
 
 export const changePassword = (current_password: string, new_password: string) =>
-  api.post('/users/profile/change-password', { current_password, new_password });
+  profileApi.post('/change-password', { current_password, new_password });
 
 // ─── Areas ──────────────────────────────────────────────────────────────────
 
@@ -107,15 +115,17 @@ export const getArea = (id: number) => api.get(`/areas/${id}`);
 
 // ─── Infrastructure ──────────────────────────────────────────────────────────
 
+export const getCustomInfrastructureLocations = () => api.get('/areas/infrastructure/custom');
+export const streamAreaInfrastructure = (id: number) => api.get(`/areas/${id}/infrastructure/stream`);
+export const getAreaStatus = (id: number) => api.get(`/areas/${id}/status`);
+export const triggerInfrastructureFetch = (id: number) => api.post(`/areas/${id}/infrastructure/fetch`);
 export const getAreaInfrastructure = (id: number) => api.get(`/areas/${id}/infrastructure`);
-export const getAreaInfrastructureLocations = (id: number) =>
-  api.get(`/areas/${id}/infrastructure/locations`);
+export const getAreaInfrastructureLocations = (id: number) => api.get(`/areas/${id}/infrastructure/locations`);
 
 // ─── Scoring ────────────────────────────────────────────────────────────────
 
-export const getAreaScore = (id: number) => api.get(`/areas/${id}/score`);
-export const getCustomScore = (lat: number, lon: number, radius: number) =>
-  api.get('/areas/score/custom', { params: { lat, lon, radius } });
+export const getCustomScore = (lat: number, lon: number) =>
+  api.get('/areas/score/custom', { params: { lat, lon } });
 
 export const getAIRecommendation = (data: {
   locality_name: string;
@@ -124,6 +134,8 @@ export const getAIRecommendation = (data: {
   infrastructure: Record<string, number>;
   profile_context: Record<string, unknown> | null;
 }) => api.post('/areas/score/recommend', data);
+
+export const getAreaScore = (id: number) => api.get(`/areas/${id}/score`);
 
 // ─── Market Data ────────────────────────────────────────────────────────────
 
@@ -137,3 +149,13 @@ export const getMarketSummary = (area?: string) =>
 
 export const compareMarketAreas = (area1: string, area2: string) =>
   api.get('/market/compare', { params: { area1, area2 } });
+
+// ─── Map View ────────────────────────────────────────────────────────────────
+
+/** Fetch all 13 amenity category counts for the map view (radius fixed to 2000 m server-side) */
+export const getMapViewData = (lat: number, lon: number) =>
+  api.post('/map-view/data', { lat, lon });
+
+// ─── Health ────────────────────────────────────────────────────────────────
+
+export const getHealth = () => axios.get(`${BASE}/health`);

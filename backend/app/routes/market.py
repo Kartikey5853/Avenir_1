@@ -11,7 +11,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/market", tags=["Market"])
 
-DATA_FILE = os.path.join(os.path.dirname(__file__), "..", "data.json")
+DATA_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "data.json")
 
 
 def _load_data() -> dict:

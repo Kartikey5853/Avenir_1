@@ -22,6 +22,11 @@ class UserProfile(Base):
     has_elderly = Column(Boolean, default=False)  # lives with elderly people
     has_children = Column(Boolean, default=False)  # has children
     profile_picture = Column(Text, nullable=True)  # base64 or URL of profile pic
+    # New scoring preference flags (5-question profile)
+    relies_on_public_transport = Column(Boolean, default=False)  # Q2: uses public transport
+    prefers_vibrant_lifestyle   = Column(Boolean, default=False)  # Q3: wants restaurants/bars/gyms
+    safety_priority             = Column(Boolean, default=False)  # Q4: safety top priority
+    is_investment_focused       = Column(Boolean, default=False)  # Kept for DB compat; removed from UI/schema
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="profile")

@@ -19,8 +19,43 @@ from app.routes import area
 from app.routes import infrastructure
 from app.routes import profile
 from app.routes import scoring
+from app.routes import map_view
+from app.routes import market
 
 Base.metadata.create_all(bind=engine)
+
+# ── Seed areas on startup ──────────────────────────────────────────────────────
+def _seed_areas() -> None:
+    from app.database import SessionLocal
+    from app.seeds import seed_areas
+    db = SessionLocal()
+    try:
+        seed_areas(db)
+    finally:
+        db.close()
+
+_seed_areas()
+
+# ── Runtime DB column migration (idempotent) ──────────────────────────────────
+def _ensure_profile_columns() -> None:
+    """Add new profile columns when upgrading existing databases."""
+    from app.database import engine as _eng
+    new_cols = [
+        ("relies_on_public_transport", "BOOLEAN DEFAULT 0"),
+        ("prefers_vibrant_lifestyle",  "BOOLEAN DEFAULT 0"),
+        ("safety_priority",             "BOOLEAN DEFAULT 0"),
+    ]
+    with _eng.connect() as conn:
+        for col, col_def in new_cols:
+            try:
+                conn.execute(__import__('sqlalchemy').text(
+                    f"ALTER TABLE user_profiles ADD COLUMN {col} {col_def}"
+                ))
+                conn.commit()
+            except Exception:
+                pass  # column already exists
+
+_ensure_profile_columns()
 # ----------------------------------
 # Centralized Logging Configuration (Production)
 # ----------------------------------
@@ -43,7 +78,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -100,6 +135,8 @@ app.include_router(area.router, prefix="/api", tags=["Areas"])
 app.include_router(infrastructure.router, prefix="/api", tags=["Infrastructure"])
 app.include_router(profile.router, prefix="/api", tags=["Profile"])
 app.include_router(scoring.router, prefix="/api", tags=["Scoring"])
+app.include_router(map_view.router, prefix="/api", tags=["Map View"])
+app.include_router(market.router, prefix="/api", tags=["Market"])
 # ----------------------------------
 # Health Check Route (Production Must)
 # ----------------------------------

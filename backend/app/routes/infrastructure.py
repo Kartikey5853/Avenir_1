@@ -20,12 +20,14 @@ from app.schemas.infrastructure import (
     AreaStatusResponse,
 )
 from app.services.overpass_service import (
-    fetch_infrastructure_background,
-    fetch_facility_locations,
     get_infrastructure_for_area,
+)
+from app.services.location_service import (
+    fetch_facility_locations,
     iter_facility_locations_sse,
     ALL_CATEGORIES,
 )
+from app.services.map_view_fetch_logic import fetch_map_data
 from app.utils.exceptions import ExternalAPIError
 from datetime import datetime, timezone, timedelta
 from app.config import settings
@@ -221,8 +223,58 @@ async def trigger_infrastructure_fetch(
         db.add(infra)
         db.commit()
 
-    background_tasks.add_task(fetch_infrastructure_background, area_id, SessionLocal)
+    background_tasks.add_task(
+        _background_fetch_counts,
+        area_id, area.center_lat, area.center_lon, area.radius_meters or 2000,
+    )
     return {"status": "pending", "message": "Infrastructure fetch started"}
+
+
+async def _background_fetch_counts(area_id: int, lat: float, lon: float, radius: int) -> None:
+    """Background task: fetch live counts from Overpass and persist to DB."""
+    db = SessionLocal()
+    try:
+        infra = db.query(InfrastructureData).filter(InfrastructureData.area_id == area_id).first()
+        if infra is None:
+            infra = InfrastructureData(area_id=area_id)
+            db.add(infra)
+
+        infra.infra_status = "fetching_hospitals"
+        db.commit()
+
+        counts = await fetch_map_data(lat=lat, lon=lon)
+
+        # Write all counts
+        infra.hospital_count      = counts.get("hospital_count", 0)
+        infra.school_count        = counts.get("school_count", 0)
+        infra.police_count        = counts.get("police_count", 0)
+        infra.fire_station_count  = counts.get("fire_station_count", 0)
+        infra.park_count          = counts.get("park_count", 0)
+        infra.bus_stop_count      = counts.get("bus_stop_count", 0)
+        infra.metro_count         = counts.get("metro_count", 0)
+        infra.train_station_count = counts.get("train_station_count", 0)
+        infra.supermarket_count   = counts.get("supermarket_count", 0)
+        infra.restaurant_count    = counts.get("restaurant_count", 0)
+        infra.cafe_count          = counts.get("cafe_count", 0)
+        infra.gym_count           = counts.get("gym_count", 0)
+        infra.bar_count           = counts.get("bar_count", 0)
+        infra.infra_status        = "ready"
+        infra.last_updated        = datetime.now(timezone.utc)
+        infra.error_message       = None
+        infra.failed_categories   = None
+        db.commit()
+        logger.info("[INFRA BG] Area %d fetch complete.", area_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("[INFRA BG] Area %d fetch failed: %s", area_id, exc)
+        try:
+            if infra:
+                infra.infra_status = "failed"
+                infra.error_message = str(exc)
+                db.commit()
+        except Exception:
+            pass
+    finally:
+        db.close()
 
 
 # ─── Infrastructure counts endpoint ──────────────────────────────────────────
@@ -255,7 +307,6 @@ async def get_area_infrastructure(
             db.add(infra)
             db.commit()
             db.refresh(infra)
-        background_tasks.add_task(fetch_infrastructure_background, area_id, SessionLocal)
 
     return InfrastructureResponse(
         area_id=area.id,
@@ -312,7 +363,6 @@ async def get_area_infrastructure_locations(
             db.add(infra)
             db.commit()
             db.refresh(infra)
-        background_tasks.add_task(fetch_infrastructure_background, area_id, SessionLocal)
 
     # Fetch live locations from Overpass (per-category, independent queries)
     try:
@@ -332,20 +382,21 @@ async def get_area_infrastructure_locations(
     return InfrastructureWithLocationsResponse(
         area_id=area.id,
         area_name=area.name,
-        hospital_count=infra.hospital_count or 0,
-        school_count=infra.school_count or 0,
-        bus_stop_count=infra.bus_stop_count or 0,
-        metro_count=infra.metro_count or 0,
-        supermarket_count=infra.supermarket_count or 0,
-        restaurant_count=infra.restaurant_count or 0,
-        gym_count=infra.gym_count or 0,
-        bar_count=infra.bar_count or 0,
-        police_count=getattr(infra, 'police_count', 0) or 0,
-        fire_station_count=getattr(infra, 'fire_station_count', 0) or 0,
-        park_count=getattr(infra, 'park_count', 0) or 0,
-        cafe_count=getattr(infra, 'cafe_count', 0) or 0,
-        train_station_count=getattr(infra, 'train_station_count', 0) or 0,
-        last_updated=infra.last_updated,
+        # Counts derived from live location lists (authoritative, not stale DB cache)
+        hospital_count=len(cats.get("hospitals", [])),
+        school_count=len(cats.get("schools", [])),
+        bus_stop_count=len(cats.get("bus_stops", [])),
+        metro_count=len(cats.get("metro_stations", [])),
+        supermarket_count=len(cats.get("supermarkets", [])),
+        restaurant_count=len(cats.get("restaurants", [])),
+        gym_count=len(cats.get("gyms", [])),
+        bar_count=len(cats.get("bars", [])),
+        police_count=len(cats.get("police", [])),
+        fire_station_count=len(cats.get("fire_stations", [])),
+        park_count=len(cats.get("parks", [])),
+        cafe_count=len(cats.get("cafes", [])),
+        train_station_count=len(cats.get("train_stations", [])),
+        last_updated=datetime.now(timezone.utc),
         hospitals=cats.get("hospitals", []),
         schools=cats.get("schools", []),
         bus_stops=cats.get("bus_stops", []),

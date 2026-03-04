@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MapPin, LayoutDashboard, Building2, TrendingUp, LogOut, Settings, User, Menu, X } from 'lucide-react';
+import { MapPin, LayoutDashboard, Building2, TrendingUp, LogOut, Settings, User, GitCompareArrows } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -68,6 +68,12 @@ const AppLayout = ({ children, noPadding = false }: { children: React.ReactNode;
       label: 'Market Insights',
       onClick: () => navigate('/market'),
       className: location.pathname === '/market' ? 'border-primary' : '',
+    },
+    {
+      icon: <GitCompareArrows className="h-5 w-5 text-white" />,
+      label: 'Compare',
+      onClick: () => navigate('/compare'),
+      className: location.pathname === '/compare' ? 'border-primary' : '',
     },
   ];
 

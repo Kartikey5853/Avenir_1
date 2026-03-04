@@ -1,5 +1,7 @@
 """
 Profile request/response schemas.
+
+Five Yes/No lifestyle preference questions drive scoring weights.
 """
 
 from pydantic import BaseModel
@@ -8,40 +10,30 @@ from datetime import datetime
 
 
 class ProfileCreate(BaseModel):
-    marital_status: str = "single"       # single / married
-    has_parents: bool = False
-    employment_status: str = "working"   # student / working / unemployed
-    income_range: Optional[str] = "prefer_not_to_say"
-    additional_info: Optional[str] = None
-    has_vehicle: bool = False
-    has_elderly: bool = False
-    has_children: bool = False
+    # 4 scoring-preference questions
+    has_children:               bool = False   # Q1 — schools weight high
+    relies_on_public_transport: bool = False   # Q2 — transport weight high; False = has vehicle
+    prefers_vibrant_lifestyle:  bool = False   # Q3 — lifestyle weight high
+    safety_priority:            bool = False   # Q4 — safety weight high
+    # kept for display / backwards compat
     profile_picture: Optional[str] = None
 
 
 class ProfileUpdate(BaseModel):
-    marital_status: Optional[str] = None
-    has_parents: Optional[bool] = None
-    employment_status: Optional[str] = None
-    income_range: Optional[str] = None
-    additional_info: Optional[str] = None
-    has_vehicle: Optional[bool] = None
-    has_elderly: Optional[bool] = None
-    has_children: Optional[bool] = None
-    profile_picture: Optional[str] = None
+    has_children:               Optional[bool] = None
+    relies_on_public_transport: Optional[bool] = None
+    prefers_vibrant_lifestyle:  Optional[bool] = None
+    safety_priority:            Optional[bool] = None
+    profile_picture:            Optional[str]  = None
 
 
 class ProfileResponse(BaseModel):
     id: int
     user_id: int
-    marital_status: str
-    has_parents: bool
-    employment_status: str
-    income_range: Optional[str] = None
-    additional_info: Optional[str] = None
-    has_vehicle: bool = False
-    has_elderly: bool = False
-    has_children: bool = False
+    has_children:               bool = False
+    relies_on_public_transport: bool = False
+    prefers_vibrant_lifestyle:  bool = False
+    safety_priority:            bool = False
     profile_picture: Optional[str] = None
     created_at: datetime
 

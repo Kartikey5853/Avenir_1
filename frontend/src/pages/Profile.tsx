@@ -1,36 +1,75 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  User, Briefcase, Heart, Home, ArrowLeft, Loader2, Save,
-  DollarSign, Car, Baby, UserRound, FileText, Camera
+  Baby, Bus, Sparkles, Shield, ArrowLeft,
+  Loader2, Save, Camera
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { getProfile, createProfile, updateProfile } from '@/services/api';
 import AppLayout from '@/components/AppLayout';
 
-const INCOME_RANGES = [
-  { value: 'below_20k', label: 'Below ₹20,000' },
-  { value: '20k_40k', label: '₹20,000 – ₹40,000' },
-  { value: '40k_60k', label: '₹40,000 – ₹60,000' },
-  { value: '60k_100k', label: '₹60,000 – ₹1,00,000' },
-  { value: '100k_200k', label: '₹1,00,000 – ₹2,00,000' },
-  { value: 'above_200k', label: 'Above ₹2,00,000' },
-  { value: 'prefer_not_to_say', label: 'Prefer not to say' },
+interface Question {
+  key: keyof ProfileState;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+  yesEffect: string;
+  noEffect: string;
+}
+
+interface ProfileState {
+  has_children: boolean;
+  relies_on_public_transport: boolean;
+  prefers_vibrant_lifestyle: boolean;
+  safety_priority: boolean;
+}
+
+const QUESTIONS: Question[] = [
+  {
+    key: 'has_children',
+    label: 'Do you have children?',
+    description: 'Determines how much schools and parks matter in your score.',
+    icon: <Baby className="h-5 w-5 text-primary" />,
+    yesEffect: 'Schools & parks weighted at 30 %',
+    noEffect: 'Schools have less weight (10 %)',
+  },
+  {
+    key: 'relies_on_public_transport',
+    label: 'Do you rely on public transport for daily commute?',
+    description: 'Controls how heavily metro, bus and train proximity is scored.',
+    icon: <Bus className="h-5 w-5 text-primary" />,
+    yesEffect: 'Transport weighted at 25 %',
+    noEffect: 'Transport weighted at 5 % (you drive)',
+  },
+  {
+    key: 'prefers_vibrant_lifestyle',
+    label: 'Do you prefer areas with active nightlife and lifestyle options?',
+    description: 'Governs weight given to restaurants, cafes, gyms and bars.',
+    icon: <Sparkles className="h-5 w-5 text-primary" />,
+    yesEffect: 'Lifestyle weighted at 25 %',
+    noEffect: 'Lifestyle at minimum 15 %',
+  },
+  {
+    key: 'safety_priority',
+    label: 'Is safety one of your top priorities?',
+    description: 'Boosts the importance of hospitals, police stations and fire stations.',
+    icon: <Shield className="h-5 w-5 text-primary" />,
+    yesEffect: 'Safety weighted at 30 %',
+    noEffect: 'Safety weighted at 20 %',
+  },
 ];
 
+const DEFAULT_STATE: ProfileState = {
+  has_children: false,
+  relies_on_public_transport: false,
+  prefers_vibrant_lifestyle: false,
+  safety_priority: false,
+};
+
 const Profile = () => {
-  const [maritalStatus, setMaritalStatus] = useState('single');
-  const [hasParents, setHasParents] = useState(false);
-  const [employmentStatus, setEmploymentStatus] = useState('working');
-  const [incomeRange, setIncomeRange] = useState('prefer_not_to_say');
-  const [additionalInfo, setAdditionalInfo] = useState('');
-  const [hasVehicle, setHasVehicle] = useState(false);
-  const [hasElderly, setHasElderly] = useState(false);
-  const [hasChildren, setHasChildren] = useState(false);
+  const [answers, setAnswers] = useState<ProfileState>(DEFAULT_STATE);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
@@ -46,14 +85,12 @@ const Profile = () => {
       .then((res) => {
         if (res.data) {
           setIsExisting(true);
-          setMaritalStatus(res.data.marital_status || 'single');
-          setHasParents(res.data.has_parents || false);
-          setEmploymentStatus(res.data.employment_status || 'working');
-          setIncomeRange(res.data.income_range || 'prefer_not_to_say');
-          setAdditionalInfo(res.data.additional_info || '');
-          setHasVehicle(res.data.has_vehicle || false);
-          setHasElderly(res.data.has_elderly || false);
-          setHasChildren(res.data.has_children || false);
+          setAnswers({
+            has_children:               !!res.data.has_children,
+            relies_on_public_transport: !!res.data.relies_on_public_transport,
+            prefers_vibrant_lifestyle:  !!res.data.prefers_vibrant_lifestyle,
+            safety_priority:            !!res.data.safety_priority,
+          });
           setProfilePicture(res.data.profile_picture || null);
         }
       })
@@ -65,29 +102,21 @@ const Profile = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 500000) {
-      toast({ title: 'Image too large', description: 'Please choose an image under 500KB.', variant: 'destructive' });
+      toast({ title: 'Image too large', description: 'Please choose an image under 500 KB.', variant: 'destructive' });
       return;
     }
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setProfilePicture(reader.result as string);
-    };
+    reader.onloadend = () => setProfilePicture(reader.result as string);
     reader.readAsDataURL(file);
+  };
+
+  const toggle = (key: keyof ProfileState, value: boolean) => {
+    setAnswers((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSubmit = async () => {
     setLoading(true);
-    const data = {
-      marital_status: maritalStatus,
-      has_parents: hasParents,
-      employment_status: employmentStatus,
-      income_range: incomeRange,
-      additional_info: additionalInfo,
-      has_vehicle: hasVehicle,
-      has_elderly: hasElderly,
-      has_children: hasChildren,
-      profile_picture: profilePicture || undefined,
-    };
+    const data = { ...answers, profile_picture: profilePicture || undefined };
     try {
       if (isExisting) {
         await updateProfile(data);
@@ -98,7 +127,7 @@ const Profile = () => {
       const u = JSON.parse(localStorage.getItem('avenir_user') || '{}');
       u.is_profile_completed = true;
       localStorage.setItem('avenir_user', JSON.stringify(u));
-      toast({ title: 'Profile saved!', description: 'Your preferences will personalize your scores.' });
+      toast({ title: 'Profile saved!', description: 'Your scores are now personalised to your preferences.' });
     } catch (err: any) {
       const msg = err.response?.data?.detail || 'Failed to save profile.';
       toast({ title: 'Error', description: msg, variant: 'destructive' });
@@ -122,16 +151,20 @@ const Profile = () => {
   }
 
   return (
-    <AppLayout>      <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-8">
+    <AppLayout>
+      <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-8">
         <div className="flex items-center gap-4 animate-slide-up">
           <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </Button>
-          <h1 className="font-bold tracking-tight">Your Profile</h1>
+          <div>
+            <h1 className="font-bold tracking-tight">Your Profile</h1>
+            <p className="text-muted-foreground text-sm mt-0.5">Answer 5 questions to personalise your livability scores</p>
+          </div>
         </div>
 
         <div className="bg-card rounded-xl border border-border p-6 shadow-card hover-lift space-y-6 animate-slide-up">
-          {/* Profile Picture */}
+          {/* Profile Photo */}
           <div className="flex flex-col items-center gap-3">
             <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
               <Avatar className="h-24 w-24 border-4 border-border group-hover:border-primary transition-colors">
@@ -144,204 +177,62 @@ const Profile = () => {
                 <Camera className="h-6 w-6 text-white" />
               </div>
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageUpload}
-            />            <p className="text-xs text-muted-foreground">Click to change photo (max 500KB)</p>
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+            <p className="text-xs text-muted-foreground">Click to change photo (max 500 KB)</p>
           </div>
 
           <div className="border-b border-border" />
 
-          {/* Marital Status */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium flex items-center gap-2">
-              <Heart className="h-4 w-4 text-primary" /> Marital Status
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              {['single', 'married'].map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => setMaritalStatus(opt)}
-                  className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all capitalize ${
-                    maritalStatus === opt
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-background text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
+          {/* 5 Questions */}
+          <div className="space-y-6">
+            {QUESTIONS.map((q, idx) => (
+              <div key={q.key} className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex-shrink-0">{q.icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium leading-snug">
+                      <span className="text-muted-foreground mr-2">Q{idx + 1}.</span>
+                      {q.label}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">{q.description}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 ml-8">
+                  {[
+                    { label: 'Yes', value: true,  effect: q.yesEffect },
+                    { label: 'No',  value: false, effect: q.noEffect  },
+                  ].map((opt) => (
+                    <button
+                      key={opt.label}
+                      onClick={() => toggle(q.key, opt.value)}
+                      className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all text-left ${
+                        answers[q.key] === opt.value
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border bg-background text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      <div className="font-semibold">{opt.label}</div>
+                      <div className={`text-xs mt-0.5 ${answers[q.key] === opt.value ? 'text-primary/80' : 'text-muted-foreground'}`}>
+                        {opt.effect}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* Living with Parents */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium flex items-center gap-2">
-              <Home className="h-4 w-4 text-primary" /> Living with Parents?
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: 'Yes', value: true },
-                { label: 'No', value: false },
-              ].map((opt) => (
-                <button
-                  key={opt.label}
-                  onClick={() => setHasParents(opt.value)}
-                  className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all ${
-                    hasParents === opt.value
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-background text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Employment Status */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium flex items-center gap-2">
-              <Briefcase className="h-4 w-4 text-primary" /> Employment Status
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              {['student', 'working', 'unemployed'].map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => setEmploymentStatus(opt)}
-                  className={`px-3 py-3 rounded-lg border text-sm font-medium transition-all capitalize ${
-                    employmentStatus === opt
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-background text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Income Range */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-primary" /> Monthly Income Range
-            </label>
-            <Select value={incomeRange} onValueChange={setIncomeRange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select income range" />
-              </SelectTrigger>
-              <SelectContent>
-                {INCOME_RANGES.map((r) => (
-                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Has Vehicle */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium flex items-center gap-2">
-              <Car className="h-4 w-4 text-primary" /> Do you have a vehicle to commute?
-            </label>
-            <p className="text-xs text-muted-foreground">If yes, transportation will have less weight in scoring</p>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: 'Yes', value: true },
-                { label: 'No', value: false },
-              ].map((opt) => (
-                <button
-                  key={opt.label}
-                  onClick={() => setHasVehicle(opt.value)}
-                  className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all ${
-                    hasVehicle === opt.value
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-background text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Has Elderly */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium flex items-center gap-2">
-              <UserRound className="h-4 w-4 text-primary" /> Do you have elderly people at home?
-            </label>
-            <p className="text-xs text-muted-foreground">If yes, hospitals & healthcare will have more weight</p>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: 'Yes', value: true },
-                { label: 'No', value: false },
-              ].map((opt) => (
-                <button
-                  key={opt.label}
-                  onClick={() => setHasElderly(opt.value)}
-                  className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all ${
-                    hasElderly === opt.value
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-background text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Has Children */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium flex items-center gap-2">
-              <Baby className="h-4 w-4 text-primary" /> Do you have children?
-            </label>
-            <p className="text-xs text-muted-foreground">If yes, education facilities will have more weight</p>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: 'Yes', value: true },
-                { label: 'No', value: false },
-              ].map((opt) => (
-                <button
-                  key={opt.label}
-                  onClick={() => setHasChildren(opt.value)}
-                  className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all ${
-                    hasChildren === opt.value
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-background text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>          {/* Additional Info */}
           <div className="border-b border-border" />
-          <div className="space-y-3">
-            <label className="text-sm font-medium flex items-center gap-2">
-              <FileText className="h-4 w-4 text-primary" /> Additional Information
-            </label>
-            <p className="text-xs text-muted-foreground">
-              Tell us anything else that can help personalize your scores (hobbies, lifestyle preferences, etc.)
-            </p>
-            <Textarea
-              placeholder="e.g. I prefer quiet neighborhoods, I work from home, I enjoy outdoor activities..."
-              value={additionalInfo}
-              onChange={(e) => setAdditionalInfo(e.target.value)}
-              rows={4}
-            />
-          </div>          {/* Save Button */}
-          <div className="border-b border-border" />
+
+          {/* Submit Button */}
           <Button
-            className="w-full gradient-warm text-primary-foreground font-semibold"
             onClick={handleSubmit}
             disabled={loading}
+            className="w-full gradient-warm text-primary-foreground font-semibold hover-lift"
             size="lg"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-            Save Profile
+            {isExisting ? 'Update Profile' : 'Create Profile'}
           </Button>
         </div>
       </div>

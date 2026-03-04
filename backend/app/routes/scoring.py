@@ -12,8 +12,10 @@ from app.database import get_db
 from app.models.area import Area
 from app.models.auth import User
 from app.models.profile import UserProfile
+from app.models.infrastructure import InfrastructureData
 from app.schemas.scoring import ScoreResponse, CategoryScores
-from app.services.overpass_service import get_infrastructure_for_area, fetch_all_counts_single_query
+from app.services.overpass_service import get_infrastructure_for_area
+from app.services.map_view_fetch_logic import fetch_map_data
 from app.services.scoring_engine import compute_final_score
 from app.services.gemini_services import get_gemini_recommendation
 from app.utils.security import get_optional_user
@@ -28,13 +30,10 @@ def _profile_to_dict(p: UserProfile | None) -> dict | None:
     if p is None:
         return None
     return {
-        "has_children":       bool(p.has_children),
-        "is_senior":          bool(p.has_elderly),
-        "no_car":             not bool(p.has_vehicle),
-        "safety_priority":    bool(p.has_children or p.has_elderly),
-        "grocery_priority":   False,
-        "is_fitness_focused": False,
-        "values_nightlife":   False,
+        "has_children":               bool(p.has_children),
+        "relies_on_public_transport": bool(getattr(p, "relies_on_public_transport", False)),
+        "prefers_vibrant_lifestyle":  bool(getattr(p, "prefers_vibrant_lifestyle",  False)),
+        "safety_priority":            bool(getattr(p, "safety_priority",            False)),
     }
 
 
@@ -52,8 +51,8 @@ async def get_custom_score(
     Raises 503 if Overpass is unavailable.
     """
     try:
-        counts = await fetch_all_counts_single_query(lat=lat, lon=lon, radius=radius)
-    except ExternalAPIError as exc:
+        counts = await fetch_map_data(lat=lat, lon=lon)
+    except Exception as exc:
         logger.error("Overpass error custom (%s, %s): %s", lat, lon, exc)
         raise HTTPException(
             status_code=503,
@@ -64,7 +63,7 @@ async def get_custom_score(
     if current_user:
         profile_orm = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
 
-    result = compute_final_score(counts, profile=_profile_to_dict(profile_orm), radius=radius)
+    result = compute_final_score(counts, profile=_profile_to_dict(profile_orm), radius=2000)
 
     return ScoreResponse(
         area_id=0,
@@ -75,7 +74,8 @@ async def get_custom_score(
         summary=result["summary"],
         highlights=result["highlights"],
         concerns=result["concerns"],
-        radius_m=radius,
+        counts=counts,
+        radius_m=2000,
     )
 
 
@@ -107,27 +107,37 @@ async def get_area_score(
 ):
     """
     Compute the livability score for a predefined area.
-    Uses cached infra data when fresh; re-fetches in parallel otherwise.
+    Fetches live OSM data via the race service; falls back to DB cache if unavailable.
     """
     area = db.query(Area).filter(Area.id == area_id).first()
     if not area:
         raise HTTPException(status_code=404, detail="Area not found")
 
+    radius = area.radius_meters or 2000
+
+    # Try live fetch first (same race service as custom score)
+    counts: dict | None = None
     try:
-        infra = await get_infrastructure_for_area(area, db)
-    except ExternalAPIError as exc:
-        logger.error("Overpass error for area %d: %s", area_id, exc)
-        raise HTTPException(
-            status_code=503,
-            detail={"status": "failed", "message": "Infrastructure service temporarily unavailable."},
-        )
+        counts = await fetch_map_data(lat=area.center_lat, lon=area.center_lon)
+    except Exception as exc:
+        logger.warning("Live fetch failed for area %d, falling back to DB: %s", area_id, exc)
+
+    # Fall back to DB cached counts if live fetch failed
+    if counts is None:
+        infra = db.query(InfrastructureData).filter(InfrastructureData.area_id == area_id).first()
+        if infra is None:
+            raise HTTPException(
+                status_code=503,
+                detail={"status": "failed", "message": "Infrastructure data unavailable. Please try again."},
+            )
+        from app.services.scoring_engine import _COLUMN_KEYS
+        counts = {col: getattr(infra, col, 0) or 0 for col in _COLUMN_KEYS}
 
     profile_orm: UserProfile | None = None
     if current_user:
         profile_orm = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
 
-    radius = area.radius_meters or 2000
-    result = compute_final_score(infra, profile=_profile_to_dict(profile_orm), radius=radius)
+    result = compute_final_score(counts, profile=_profile_to_dict(profile_orm), radius=radius)
 
     return ScoreResponse(
         area_id=area.id,
@@ -138,5 +148,6 @@ async def get_area_score(
         summary=result["summary"],
         highlights=result["highlights"],
         concerns=result["concerns"],
+        counts=counts,
         radius_m=radius,
     )

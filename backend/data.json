@@ -1,0 +1,180 @@
+{
+  "city": "Hyderabad",
+  "property_type": "2BHK",
+  "listings": [
+
+   
+
+    {
+      "area": "Gachibowli",
+      "project_name": "Unnamed Listing 1",
+      "rent": 75000,
+      "sqft": 1200,
+      "rent_per_sqft": 62.5,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Gachibowli",
+      "project_name": "Unnamed Listing 2",
+      "rent": 90000,
+      "sqft": 1500,
+      "rent_per_sqft": 60,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Gachibowli",
+      "project_name": "Unnamed Listing 3",
+      "rent": 65000,
+      "sqft": 1100,
+      "rent_per_sqft": 59,
+      "furnishing": "Unknown"
+    },
+
+   
+    {
+      "area": "Madhapur",
+      "project_name": "Swamy Ayyappa Society",
+      "rent": 36000,
+      "sqft": 1200,
+      "rent_per_sqft": 30,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Madhapur",
+      "project_name": "Sri Ganesh RVB Residency",
+      "rent": 38000,
+      "sqft": 1100,
+      "rent_per_sqft": 34,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Madhapur",
+      "project_name": "Hi Tec Residency",
+      "rent": 40000,
+      "sqft": 1400,
+      "rent_per_sqft": 28,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Madhapur",
+      "project_name": "Chandana Nilayam",
+      "rent": 30000,
+      "sqft": 1200,
+      "rent_per_sqft": 25,
+      "furnishing": "Unknown"
+    },
+
+   
+
+    {
+      "area": "Kondapur",
+      "project_name": "Aparna Serene Park",
+      "rent": 58000,
+      "sqft": 1295,
+      "rent_per_sqft": 45,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Kondapur",
+      "project_name": "Masjid Banda",
+      "rent": 45000,
+      "sqft": 1050,
+      "rent_per_sqft": 43,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Kondapur",
+      "project_name": "Raja Rajeswari Nagar",
+      "rent": 38000,
+      "sqft": 1210,
+      "rent_per_sqft": 31,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Kondapur",
+      "project_name": "Sai Nilayam",
+      "rent": 32000,
+      "sqft": 1150,
+      "rent_per_sqft": 27,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Kondapur",
+      "project_name": "Kondapur Sri Hari Nagar",
+      "rent": 36200,
+      "sqft": 1300,
+      "rent_per_sqft": 27.8,
+      "furnishing": "Verified"
+    },
+
+    
+
+    {
+      "area": "Kukatpally",
+      "project_name": "Pragathi Nagar JNCU",
+      "rent": 18000,
+      "sqft": 750,
+      "rent_per_sqft": 24,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Kukatpally",
+      "project_name": "Baba Nilayam",
+      "rent": 14000,
+      "sqft": 1400,
+      "rent_per_sqft": 10,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Kukatpally",
+      "project_name": "Abodes Green Ridge Apartments",
+      "rent": 25000,
+      "sqft": 1000,
+      "rent_per_sqft": 25,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Kukatpally",
+      "project_name": "Balaji Nagar",
+      "rent": 29000,
+      "sqft": 1280,
+      "rent_per_sqft": 22,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Kukatpally",
+      "project_name": "Sri Sai Nilayam",
+      "rent": 28000,
+      "sqft": 1100,
+      "rent_per_sqft": 25,
+      "furnishing": "Unknown"
+    },
+
+    
+
+    {
+      "area": "LB Nagar",
+      "project_name": "Sai Seemandhar",
+      "rent": 17000,
+      "sqft": 1100,
+      "rent_per_sqft": 15,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "LB Nagar",
+      "project_name": "Bapu Nagar Independent House",
+      "rent": 35000,
+      "sqft": 2160,
+      "rent_per_sqft": 16,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "LB Nagar",
+      "project_name": "LB Nagar Karuna Residency",
+      "rent": 15000,
+      "sqft": 810,
+      "rent_per_sqft": 18.5,
+      "furnishing": "Unknown"
+    }
+  ]
+}

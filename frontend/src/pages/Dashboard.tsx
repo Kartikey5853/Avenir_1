@@ -1,29 +1,65 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  MapPin, TrendingUp, User, Shield, Building2, Settings,
-  Heart, Briefcase, Baby, Car, UserRound, Home, Loader2
+  MapPin, TrendingUp, User, Shield, Loader2
 } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
-import { ParticleCard } from '@/components/MagicBento';
+import { Timeline, TimelineItem } from '@/components/ui/modern-timeline';
 import { getProfile } from '@/services/api';
 
 interface ProfileData {
-  marital_status: string;
-  has_parents: boolean;
-  employment_status: string;
-  income_range?: string;
-  has_vehicle?: boolean;
-  has_elderly?: boolean;
-  has_children?: boolean;
+  has_children: boolean;
+  relies_on_public_transport: boolean;
+  prefers_vibrant_lifestyle: boolean;
+  safety_priority: boolean;
+  profile_picture?: string | null;
 }
 
-const navTiles = [
-  { label: 'Profile', desc: 'View & edit your profile', icon: User, path: '/profile', gradient: 'from-orange-500 to-amber-500' },
-  { label: 'Settings', desc: 'Theme & password', icon: Settings, path: '/settings', gradient: 'from-purple-500 to-indigo-500' },
-  { label: 'Map View', desc: 'Explore & score locations', icon: MapPin, path: '/map', gradient: 'from-blue-500 to-cyan-500' },
-  { label: 'Market Insights', desc: 'Rental & housing data', icon: TrendingUp, path: '/market', gradient: 'from-green-500 to-emerald-500' },
-  { label: 'Facilities', desc: 'Infrastructure overview', icon: Building2, path: '/facilities', gradient: 'from-pink-500 to-rose-500' },
+const getJourneyItems = (profile: ProfileData | null): TimelineItem[] => [
+  {
+    title: 'Create Your Account',
+    description: 'Signed up and verified your email. You\'re all set to explore Avenir.',
+    category: 'Account',
+    date: 'Completed',
+    status: 'completed',
+  },
+  {
+    title: 'Set Up Your Profile',
+    description: profile
+      ? 'Your lifestyle profile is complete — scores are now personalized to your household.'
+      : 'Tell us about your household so we can personalize livability scores for you.',
+    category: 'Profile',
+    date: profile ? 'Completed' : 'In Progress',
+    status: profile ? 'completed' : 'current',
+  },
+  {
+    title: 'Explore the Map',
+    description: 'Open Map View and click any location on the map to get a real-time livability score powered by OpenStreetMap data.',
+    category: 'Discovery',
+    date: 'Next Step',
+    status: profile ? 'current' : 'upcoming',
+  },
+  {
+    title: 'Score a Neighbourhood',
+    description: 'Get a detailed breakdown of safety, transport, education, lifestyle and grocery scores for any area.',
+    category: 'Scoring',
+    date: 'Upcoming',
+    status: 'upcoming',
+  },
+  {
+    title: 'Check Market Data',
+    description: 'Browse real rental and housing listings, compare area prices, and spot the best value neighbourhoods.',
+    category: 'Market',
+    date: 'Upcoming',
+    status: 'upcoming',
+  },
+  {
+    title: 'Explore Facilities',
+    description: 'Visualise hospitals, schools, transit, restaurants and more on an interactive map for any area.',
+    category: 'Infrastructure',
+    date: 'Upcoming',
+    status: 'upcoming',
+  },
 ];
 
 const Dashboard = () => {
@@ -39,17 +75,8 @@ const Dashboard = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  const profileFields = profile
-    ? [
-        { label: 'Marital Status', value: profile.marital_status === 'married' ? 'Married' : 'Single', icon: Heart },
-        { label: 'Employment', value: profile.employment_status === 'working' ? 'Working' : profile.employment_status === 'student' ? 'Student' : 'Unemployed', icon: Briefcase },
-        { label: 'Income Range', value: profile.income_range?.replace(/_/g, ' ') || 'Not specified', icon: TrendingUp },
-        { label: 'Has Vehicle', value: profile.has_vehicle ? 'Yes' : 'No', icon: Car },
-        { label: 'Has Children', value: profile.has_children ? 'Yes' : 'No', icon: Baby },
-        { label: 'Has Elderly', value: profile.has_elderly ? 'Yes' : 'No', icon: UserRound },
-        { label: 'Lives with Parents', value: profile.has_parents ? 'Yes' : 'No', icon: Home },
-      ]
-    : [];
+  const journeyItems = getJourneyItems(profile);
+
   return (
     <AppLayout>
       <div className="px-4 md:px-8 py-6 md:py-10 w-full max-w-full space-y-10">
@@ -61,9 +88,22 @@ const Dashboard = () => {
           <p className="text-muted-foreground mt-2 text-base">Here's your lifestyle exploration dashboard</p>
         </div>
 
-        {/* Profile Summary */}
-        <div className="bg-card rounded-xl border border-border p-6 shadow-card hover-lift animate-slide-up">
-          <div className="flex items-center justify-between pb-3 mb-5 border-b border-border">
+        {/* ── 1. YOUR AVENIR JOURNEY (first, no extra card boxing) ── */}
+        <div className="animate-slide-up">
+          <div className="mb-4">
+            <h2 className="font-semibold flex items-center gap-2 text-lg tracking-tight">
+              <MapPin className="h-5 w-5 text-primary" /> Your Avenir Journey
+            </h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              Track your progress — complete each step to get the most out of Avenir.
+            </p>
+          </div>
+          <Timeline items={journeyItems} />
+        </div>
+
+        {/* ── 2. PROFILE QUESTIONS ── */}
+        <div className="bg-card rounded-xl border border-border p-6 shadow-card animate-slide-up">
+          <div className="flex items-center justify-between pb-3 mb-4 border-b border-border">
             <h2 className="font-semibold flex items-center gap-2 text-lg tracking-tight">
               <User className="h-5 w-5 text-primary" /> Your Profile
             </h2>
@@ -71,79 +111,43 @@ const Dashboard = () => {
           </div>
 
           {profile ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {profileFields.map((f) => (
-                <div key={f.label} className="flex items-center gap-3 p-3.5 rounded-lg border border-border bg-background transition-all duration-200 hover:border-primary/30 hover:shadow-sm">
-                  <f.icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">{f.label}</p>
-                    <p className="text-sm font-medium capitalize truncate">{f.value}</p>
-                  </div>
+            <div className="space-y-2">
+              {[
+                { label: 'Do you have children?',                val: profile.has_children                },
+                { label: 'Do you rely on public transport?',     val: profile.relies_on_public_transport  },
+                { label: 'Do you prefer a vibrant lifestyle?',   val: profile.prefers_vibrant_lifestyle   },
+                { label: 'Is safety a top priority for you?',    val: profile.safety_priority             },
+              ].map(({ label, val }) => (
+                <div key={label} className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-background border border-border">
+                  <span className="text-sm text-muted-foreground">{label}</span>
+                  <span className={`text-sm font-semibold ${val ? 'text-green-500' : 'text-muted-foreground'}`}>
+                    {val ? 'Yes' : 'No'}
+                  </span>
                 </div>
               ))}
+              <button
+                onClick={() => navigate('/profile')}
+                className="text-xs text-primary hover:underline font-medium mt-1 w-full text-right"
+              >
+                Edit profile →
+              </button>
             </div>
           ) : !loading ? (
-            <div className="text-center py-8">
+            <div className="text-center py-6">
               <p className="text-sm text-muted-foreground mb-3">No profile set up yet</p>
-              <button
-                onClick={() => navigate('/profile-setup')}
-                className="text-sm text-primary hover:underline font-medium"
-              >
+              <button onClick={() => navigate('/profile-setup')} className="text-sm text-primary hover:underline font-medium">
                 Set up your profile →
               </button>
             </div>
           ) : null}
 
-          {/* Privacy notice */}
-          <div className="flex items-start gap-2 mt-5 p-3.5 rounded-lg bg-accent/50 border border-border">
+          <div className="flex items-start gap-2 mt-4 p-3.5 rounded-lg bg-accent/50 border border-border">
             <Shield className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-            <div>
-              <p className="text-xs font-medium">Privacy Assured</p>
-              <p className="text-xs text-muted-foreground">
-                Your personal data is stored securely and won't be shared with third parties. It's only used to personalize your lifestyle scores.
-              </p>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">Privacy Assured — </span>
+              Your data is stored securely and only used to personalize your lifestyle scores.
+            </p>
           </div>
-        </div>
-
-        {/* Navigation Tiles */}
-        <div className="animate-slide-up">
-          <h2 className="font-semibold text-lg tracking-tight pb-3 mb-5 border-b border-border">Quick Navigation</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5">
-            {navTiles.map((tile) => (
-              <ParticleCard
-                key={tile.label}
-                className="group rounded-xl border border-border bg-card p-6 text-left shadow-card cursor-pointer"
-                enableTilt
-                clickEffect
-                enableMagnetism
-                particleCount={8}
-                glowColor="246, 166, 84"
-              >
-                <button
-                  onClick={() => navigate(tile.path)}
-                  className="w-full text-left"
-                >
-                  <div className={`inline-flex p-2.5 rounded-lg bg-gradient-to-br ${tile.gradient} mb-4`}>
-                    <tile.icon className="h-5 w-5 text-white" />
-                  </div>
-                  <p className="font-semibold text-sm">{tile.label}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{tile.desc}</p>
-                </button>
-              </ParticleCard>
-            ))}
-          </div>
-        </div>
-
-        {/* Quick tips */}
-        <div className="bg-card rounded-xl border border-border p-6 shadow-card hover-lift animate-slide-up">
-          <h2 className="font-semibold text-lg tracking-tight pb-3 mb-4 border-b border-border">💡 Quick Tips</h2>
-          <ul className="space-y-2.5 text-sm text-muted-foreground">
-            <li>• Open <span className="text-foreground font-medium">Map View</span> and click anywhere to score a custom location</li>
-            <li>• Update your <span className="text-foreground font-medium">Profile</span> to get personalized weight adjustments</li>
-            <li>• Use <span className="text-foreground font-medium">Market Insights</span> to compare rental prices between areas</li>
-            <li>• Check <span className="text-foreground font-medium">Facilities</span> to see infrastructure data with a map view</li>
-          </ul>
         </div>
       </div>
     </AppLayout>
@@ -151,3 +155,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+

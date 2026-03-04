@@ -16,6 +16,11 @@ class Settings(BaseSettings):
 
     CACHE_TTL_HOURS: int = 24
 
+    # Map provider API keys (multi-provider location service)
+    MAPBOX_TOKEN:   str = ""
+    LOCATIONIQ_KEY: str = ""
+    GEOAPIFY_KEY:   str = ""
+
     class Config:
         env_file = ".env"
 
