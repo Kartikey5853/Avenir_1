@@ -109,42 +109,9 @@ def register_user(payload: RegisterRequest, db: Session = Depends(get_db)):
         db.refresh(new_user)
         logging.info(f"User registered successfully: {new_user.email}")
 
-        # Delete old verification OTP
-        db.query(OTP).filter(
-            OTP.user_id == new_user.id,
-            OTP.purpose == "email_verification"
-        ).delete()
-        db.commit()
-
-        verification_code = generate_otp()
-
-        otp_entry = OTP(
-            user_id=new_user.id,
-            otp_code=verification_code,
-            purpose="email_verification",
-            expires_at=datetime.utcnow() + timedelta(minutes=10),
-            attempts=0,
-            locked_until=None
-        )
-
-        db.add(otp_entry)
-        db.commit()
-
-        logging.info(
-            f"Verification OTP for {new_user.email}: {verification_code}"
-        )
-
-        # Send OTP via email
-        try:
-            send_otp_email(new_user.email, verification_code, purpose="email_verification")
-        except Exception as email_err:
-            logging.error(f"Could not send verification email to {new_user.email}: {email_err}")
-            # Don't fail registration if email sending fails
-
-        logging.info(f"Registration process completed for {new_user.email}")
         return {
             "success": True,
-            "message": "Registration successful. Please verify your email before logging in."
+            "message": "Registration successful."
         }
 
     except HTTPException as e:
@@ -260,52 +227,7 @@ def login_user(payload: LoginRequest, db: Session = Depends(get_db)):
             logging.warning(f"Login failed: Invalid credentials for {payload.email}")
             raise HTTPException(status_code=400, detail="Invalid credentials")
 
-        # 🔴 ENFORCE EMAIL VERIFICATION
-
-        if not user.email_verified:
-            logging.warning(f"Login failed: Email not verified for {payload.email}")
-            raise HTTPException(
-                status_code=403,
-                detail="Please verify your email before logging in."
-            )
-
-        # If 2FA enabled → send OTP
-
-        if user.two_factor_enabled:
-            # Delete previous login OTP
-            db.query(OTP).filter(
-                OTP.user_id == user.id,
-                OTP.purpose == "login_2fa"
-            ).delete()
-            db.commit()
-            otp_code = generate_otp()
-            # Store plain 6-digit OTP (VARCHAR(6) safe, short-lived)
-            otp_entry = OTP(
-                user_id=user.id,
-                otp_code=otp_code,
-                purpose="login_2fa",
-                expires_at=datetime.utcnow() + timedelta(minutes=5),
-                attempts=0,
-                locked_until=None
-            )
-            db.add(otp_entry)
-            db.commit()
-            logging.info(f"2FA OTP for {user.email}: {otp_code}")
-
-            # Send 2FA OTP via email
-            try:
-                send_otp_email(user.email, otp_code, purpose="login_2fa")
-            except Exception as email_err:
-                logging.error(f"Could not send 2FA email to {user.email}: {email_err}")
-
-            return {
-                "success": True,
-                "message": "OTP required for login",
-                "otp_required": True
-            }
-
-        # If 2FA disabled → issue JWT
-
+        # Issue JWT directly
         access_token = create_access_token({"sub": str(user.id)})
         logging.info(f"Login successful for {payload.email}")
         return TokenResponse(

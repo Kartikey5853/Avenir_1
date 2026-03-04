@@ -30,13 +30,19 @@ const Register = () => {
   const handleSignUp = async (name: string, email: string, password: string) => {
     setSignUpLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: { data: { name } },
       });
       if (error) throw new Error(error.message);
-      toast({ title: 'Account created!', description: 'Check your email for a verification link, then sign in.' });
+      const token = data.session?.access_token;
+      if (token) {
+        localStorage.setItem('avenir_token', token);
+        localStorage.setItem('avenir_user', JSON.stringify({ email, name }));
+      }
+      toast({ title: 'Welcome!', description: 'Account created successfully.' });
+      navigate('/profile-setup');
     } catch (err: any) {
       toast({ title: 'Registration failed', description: err.message || 'Please try again.', variant: 'destructive' });
     } finally {
