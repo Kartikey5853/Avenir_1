@@ -22,7 +22,7 @@ from app.routes import scoring
 from app.routes import map_view
 from app.routes import market
 
-Base.metadata.create_all(bind=engine)
+
 
 # ── Seed areas on startup ──────────────────────────────────────────────────────
 def _seed_areas() -> None:
@@ -34,7 +34,7 @@ def _seed_areas() -> None:
     finally:
         db.close()
 
-_seed_areas()
+
 
 # ── Runtime DB column migration (idempotent) ──────────────────────────────────
 def _ensure_profile_columns() -> None:
@@ -55,7 +55,7 @@ def _ensure_profile_columns() -> None:
             except Exception:
                 pass  # column already exists
 
-_ensure_profile_columns()
+
 # ----------------------------------
 # Centralized Logging Configuration (Production)
 # ----------------------------------
@@ -73,6 +73,13 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url=None
 )
+
+@app.on_event("startup")
+def startup_event():
+    Base.metadata.create_all(bind=engine)
+    _seed_areas()
+    _ensure_profile_columns()
+
 
 # CORS middleware: allow all origins
 app.add_middleware(
