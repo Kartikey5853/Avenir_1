@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { AuthUI } from '@/components/ui/auth-fuse';
-import { supabase } from '@/lib/supabase';
+import { loginUser, registerUser } from '@/services/api';
 
 const Register = () => {
   const [signInLoading, setSignInLoading] = useState(false);
@@ -13,15 +13,15 @@ const Register = () => {
   const handleSignIn = async (email: string, password: string) => {
     setSignInLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw new Error(error.message);
-      const token = data.session!.access_token;
-      localStorage.setItem('avenir_token', token);
-      localStorage.setItem('avenir_user', JSON.stringify({ email, name: email.split('@')[0] }));
+      const res = await loginUser(email, password);
+      const { access_token, user } = res.data;
+      localStorage.setItem('avenir_token', access_token);
+      localStorage.setItem('avenir_user', JSON.stringify(user));
       toast({ title: 'Welcome back!', description: 'Logged in successfully.' });
-      navigate('/dashboard');
+      navigate(user.is_profile_completed ? '/dashboard' : '/profile-setup');
     } catch (err: any) {
-      toast({ title: 'Login failed', description: err.message || 'Invalid credentials.', variant: 'destructive' });
+      const msg = err.response?.data?.detail || 'Invalid credentials.';
+      toast({ title: 'Login failed', description: msg, variant: 'destructive' });
     } finally {
       setSignInLoading(false);
     }
@@ -30,21 +30,17 @@ const Register = () => {
   const handleSignUp = async (name: string, email: string, password: string) => {
     setSignUpLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { name } },
-      });
-      if (error) throw new Error(error.message);
-      const token = data.session?.access_token;
-      if (token) {
-        localStorage.setItem('avenir_token', token);
-        localStorage.setItem('avenir_user', JSON.stringify({ email, name }));
-      }
+      await registerUser(name, email, password);
+      // Auto sign-in after registration
+      const res = await loginUser(email, password);
+      const { access_token, user } = res.data;
+      localStorage.setItem('avenir_token', access_token);
+      localStorage.setItem('avenir_user', JSON.stringify(user));
       toast({ title: 'Welcome!', description: 'Account created successfully.' });
       navigate('/profile-setup');
     } catch (err: any) {
-      toast({ title: 'Registration failed', description: err.message || 'Please try again.', variant: 'destructive' });
+      const msg = err.response?.data?.detail || 'Please try again.';
+      toast({ title: 'Registration failed', description: msg, variant: 'destructive' });
     } finally {
       setSignUpLoading(false);
     }
