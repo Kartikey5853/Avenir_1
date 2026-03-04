@@ -1,9 +1,9 @@
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 import logging
+import httpx
 
 from app.config import settings
+
+RESEND_API_URL = "https://api.resend.com/emails"
 
 
 def _build_html(otp_code: str, title: str, subtitle: str, expiry: str) -> str:
@@ -77,14 +77,9 @@ def _build_html(otp_code: str, title: str, subtitle: str, expiry: str) -> str:
 
 def send_otp_email(to_email: str, otp_code: str, purpose: str = "email_verification"):
     """
-    Send a styled HTML OTP email to the given address.
+    Send a styled HTML OTP email via Resend API.
     purpose: 'email_verification' | 'login_2fa' | 'password_reset'
     """
-    smtp_server   = settings.SMTP_SERVER
-    smtp_port     = settings.SMTP_PORT
-    smtp_user     = settings.SMTP_USER
-    smtp_password = settings.SMTP_PASSWORD
-
     if purpose == "password_reset":
         subject  = "Avenir – Password Reset Code"
         title    = "Password Reset"
@@ -104,24 +99,38 @@ def send_otp_email(to_email: str, otp_code: str, purpose: str = "email_verificat
         expiry   = "10 minutes"
         plain    = f"Your Avenir email verification code is: {otp_code}\n\nExpires in 10 minutes."
 
-    # Build multipart email (plain + HTML)
-    message = MIMEMultipart("alternative")
-    message["Subject"] = subject
-    message["From"]    = smtp_user
-    message["To"]      = to_email
-    message.attach(MIMEText(plain, "plain"))
-    message.attach(MIMEText(_build_html(otp_code, title, subtitle, expiry), "html"))
-
-    # [DEV] Always print OTP to console
+    # Always print OTP to console for debugging
     print(f"[DEV] OTP for {to_email} ({purpose}): {otp_code}")
 
-    try:
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()
-            server.login(smtp_user, smtp_password)
-            server.sendmail(smtp_user, to_email, message.as_string())
+    if not settings.RESEND_API_KEY:
+        logging.warning("RESEND_API_KEY not configured. Email not sent.")
+        return
 
-        logging.info(f"OTP email ({purpose}) sent to {to_email}")
+    payload = {
+        "from":    settings.RESEND_FROM,
+        "to":      [to_email],
+        "subject": subject,
+        "text":    plain,
+        "html":    _build_html(otp_code, title, subtitle, expiry),
+    }
+
+    try:
+        response = httpx.post(
+            RESEND_API_URL,
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {settings.RESEND_API_KEY}",
+                "Content-Type":  "application/json",
+            },
+            timeout=10.0,
+        )
+        if response.status_code in (200, 201):
+            logging.info(f"OTP email ({purpose}) sent to {to_email} via Resend")
+        else:
+            logging.error(
+                f"Resend error {response.status_code} sending to {to_email}: {response.text[:300]}"
+            )
+            raise RuntimeError(f"Resend returned {response.status_code}: {response.text[:200]}")
 
     except Exception as e:
         logging.error(f"Failed to send OTP email ({purpose}) to {to_email}: {str(e)}")
