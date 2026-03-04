@@ -15,7 +15,6 @@ from app.utils.security import hash_password, verify_password
 from app.utils.jwt import create_access_token, get_current_user
 from app.utils.otp import generate_otp
 from app.utils.email import send_otp_email
-from passlib.context import CryptContext
 
 router = APIRouter()
 
@@ -54,7 +53,7 @@ def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db)):
             email=email,
             password_hash=hash_password(secrets.token_urlsafe(32)),
             email_verified=True,
-            two_factor_enabled=False,
+            two_factor_enabled=True,  # 2FA on by default
         )
         db.add(user)
         db.commit()
@@ -101,7 +100,7 @@ def register_user(payload: RegisterRequest, db: Session = Depends(get_db)):
             email=payload.email.lower(),
             password_hash=hash_password(payload.password),
             email_verified=False,
-            two_factor_enabled=False
+            two_factor_enabled=True  # 2FA on by default
         )
 
 
@@ -244,8 +243,7 @@ def verify_email(email: str, otp_code: str, db: Session = Depends(get_db)):
     
 
 
-    # OTP hashing context
-otp_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    # OTP comparison uses plain text (OTP is a short-lived 6-digit code)
 
 
 @router.post("/login")
@@ -281,11 +279,10 @@ def login_user(payload: LoginRequest, db: Session = Depends(get_db)):
             ).delete()
             db.commit()
             otp_code = generate_otp()
-            # 🔐 Hash OTP before storing
-            hashed_otp = otp_context.hash(otp_code)
+            # Store plain 6-digit OTP (VARCHAR(6) safe, short-lived)
             otp_entry = OTP(
                 user_id=user.id,
-                otp_code=hashed_otp,
+                otp_code=otp_code,
                 purpose="login_2fa",
                 expires_at=datetime.utcnow() + timedelta(minutes=5),
                 attempts=0,
@@ -367,9 +364,9 @@ def verify_login_otp(email: str, otp_code: str, db: Session = Depends(get_db)):
             logging.warning(f"Login OTP verification failed: OTP expired for {email}")
             raise HTTPException(status_code=400, detail="OTP expired")
 
-        # 🔐 Verify hashed OTP
+        # Verify plain OTP
 
-        if not otp_context.verify(otp_code, otp_entry.otp_code):
+        if otp_code != otp_entry.otp_code:
             otp_entry.attempts += 1
             if otp_entry.attempts >= otp_entry.max_attempts:
                 otp_entry.locked_until = datetime.utcnow() + timedelta(minutes=10)
