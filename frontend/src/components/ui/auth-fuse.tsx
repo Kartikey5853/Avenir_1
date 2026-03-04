@@ -251,8 +251,10 @@ interface SignInFormProps {
     onSubmit: (email: string, password: string) => Promise<void>;
     loading?: boolean;
     onToggle: () => void;
+    onGoogleLogin?: () => void;
+    googleLoading?: boolean;
 }
-function SignInForm({ onSubmit, loading, onToggle }: SignInFormProps) {
+function SignInForm({ onSubmit, loading, onToggle, onGoogleLogin, googleLoading }: SignInFormProps) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
@@ -325,13 +327,15 @@ function SignInForm({ onSubmit, loading, onToggle }: SignInFormProps) {
 
             <button
                 type="button"
-                className="w-full h-10 rounded-lg border border-white/12 bg-white/4 text-sm font-medium text-white flex items-center justify-center gap-3 hover:bg-white/8 transition-all duration-200"
+                onClick={onGoogleLogin}
+                disabled={googleLoading}
+                className="w-full h-10 rounded-lg border border-white/12 bg-white/4 text-sm font-medium text-white flex items-center justify-center gap-3 hover:bg-white/8 transition-all duration-200 disabled:opacity-60"
             >
-                <img
-                    src="https://www.svgrepo.com/show/475656/google-color.svg"
-                    alt="Google"
-                    className="h-4 w-4"
-                />
+                {googleLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                    <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="h-4 w-4" />
+                )}
                 Continue with Google
             </button>
         </form>
@@ -343,8 +347,10 @@ interface SignUpFormProps {
     onSubmit: (name: string, email: string, password: string) => Promise<void>;
     loading?: boolean;
     onToggle: () => void;
+    onGoogleLogin?: () => void;
+    googleLoading?: boolean;
 }
-function SignUpForm({ onSubmit, loading, onToggle }: SignUpFormProps) {
+function SignUpForm({ onSubmit, loading, onToggle, onGoogleLogin, googleLoading }: SignUpFormProps) {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -439,13 +445,19 @@ function SignUpForm({ onSubmit, loading, onToggle }: SignUpFormProps) {
 
             <button
                 type="button"
-                className="w-full h-10 rounded-lg border border-white/12 bg-white/4 text-sm font-medium text-white flex items-center justify-center gap-3 hover:bg-white/8 transition-all duration-200"
+                onClick={onGoogleLogin}
+                disabled={googleLoading}
+                className="w-full h-10 rounded-lg border border-white/12 bg-white/4 text-sm font-medium text-white flex items-center justify-center gap-3 hover:bg-white/8 transition-all duration-200 disabled:opacity-60"
             >
-                <img
-                    src="https://www.svgrepo.com/show/475656/google-color.svg"
-                    alt="Google"
-                    className="h-4 w-4"
-                />
+                {googleLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                    <img
+                        src="https://www.svgrepo.com/show/475656/google-color.svg"
+                        alt="Google"
+                        className="h-4 w-4"
+                    />
+                )}
                 Continue with Google
             </button>
         </form>
@@ -459,6 +471,8 @@ export interface AuthUIProps {
     signInLoading?: boolean;
     signUpLoading?: boolean;
     defaultTab?: "signin" | "signup";
+    onGoogleLogin?: () => void;
+    googleLoading?: boolean;
 }
 
 
@@ -468,6 +482,8 @@ export function AuthUI({
     signInLoading,
     signUpLoading,
     defaultTab = "signin",
+    onGoogleLogin,
+    googleLoading,
 }: AuthUIProps) {
     const [isSignIn, setIsSignIn] = useState(defaultTab === "signin");
 
@@ -485,12 +501,16 @@ export function AuthUI({
                             onSubmit={onSignIn}
                             loading={signInLoading}
                             onToggle={() => setIsSignIn(false)}
+                            onGoogleLogin={onGoogleLogin}
+                            googleLoading={googleLoading}
                         />
                     ) : (
                         <SignUpForm
                             onSubmit={onSignUp}
                             loading={signUpLoading}
                             onToggle={() => setIsSignIn(true)}
+                            onGoogleLogin={onGoogleLogin}
+                            googleLoading={googleLoading}
                         />
                     )}
                 </div>

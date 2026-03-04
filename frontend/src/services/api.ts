@@ -54,6 +54,10 @@ export const loginUser = (email: string, password: string) =>
 export const registerUser = (name: string, email: string, password: string) =>
   authApi.post('/register', { name, email, password });
 
+/** Sign in / register via Google OAuth access_token (implicit flow) */
+export const googleLogin = (token: string) =>
+  authApi.post('/google-login', { token });
+
 /** Verify email address after registration (uses query params per backend spec) */
 export const verifyEmail = (email: string, otp_code: string) =>
   authApi.post(`/verify-email?email=${encodeURIComponent(email)}&otp_code=${encodeURIComponent(otp_code)}`);
@@ -76,32 +80,28 @@ export const resetPasswordOtp = (email: string, otp_code: string, new_password: 
 
 export const resetPassword = (token: string, new_password: string) =>
   authApi.post('/reset-password', { token, new_password });
+/** Enable Two-Factor Authentication for the current user */
+export const enable2FA = () => authApi.post('/enable-2fa');
 
+/** Disable Two-Factor Authentication for the current user */
+export const disable2FA = () => authApi.post('/disable-2fa');
 // ─── Profile ────────────────────────────────────────────────────────────────
 
 export const getProfile = () => profileApi.get('/');
 
 export const createProfile = (data: {
-  marital_status: string;
-  has_parents: boolean;
-  employment_status: string;
-  income_range?: string;
-  additional_info?: string;
-  has_vehicle?: boolean;
-  has_elderly?: boolean;
   has_children?: boolean;
+  relies_on_public_transport?: boolean;
+  prefers_vibrant_lifestyle?: boolean;
+  safety_priority?: boolean;
   profile_picture?: string;
 }) => profileApi.post('/', data);
 
 export const updateProfile = (data: {
-  marital_status?: string;
-  has_parents?: boolean;
-  employment_status?: string;
-  income_range?: string;
-  additional_info?: string;
-  has_vehicle?: boolean;
-  has_elderly?: boolean;
   has_children?: boolean;
+  relies_on_public_transport?: boolean;
+  prefers_vibrant_lifestyle?: boolean;
+  safety_priority?: boolean;
   profile_picture?: string;
 }) => profileApi.put('/', data);
 
@@ -133,6 +133,8 @@ export const getAIRecommendation = (data: {
   category_scores: Record<string, number>;
   infrastructure: Record<string, number>;
   profile_context: Record<string, unknown> | null;
+  lat?: number | null;
+  lon?: number | null;
 }) => api.post('/areas/score/recommend', data);
 
 export const getAreaScore = (id: number) => api.get(`/areas/${id}/score`);

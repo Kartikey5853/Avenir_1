@@ -87,14 +87,21 @@ async def get_ai_recommendation(
 ):
     """
     Generate an AI recommendation for a locality based on score data and profile.
-    Body: locality_name, overall_score, category_scores
+    Body: locality_name, overall_score, category_scores, lat (optional), lon (optional)
     """
+    # If no profile_context provided, use the logged-in user's profile
+    profile_ctx = body.get("profile_context")
+    if profile_ctx is None and current_user:
+        from app.models.profile import UserProfile as _UP
+        prof_orm = db.query(_UP).filter(_UP.user_id == current_user.id).first()
+        if prof_orm:
+            profile_ctx = _profile_to_dict(prof_orm)
+
+    lat = body.get("lat")
+    lon = body.get("lon")
     recommendation = await get_gemini_recommendation(
-        locality_name=body.get("locality_name", "Unknown"),
-        final_score=body.get("overall_score", body.get("final_score", 0)),
-        category_scores=body.get("category_scores", {}),
-        infrastructure=body.get("infrastructure", {}),
-        profile=body.get("profile_context"),
+        lat=float(lat) if lat is not None else None,
+        lon=float(lon) if lon is not None else None,
     )
     return {"recommendation": recommendation}
 

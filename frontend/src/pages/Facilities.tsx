@@ -2,8 +2,8 @@
 import L from 'leaflet';
 import {
   Building2, GraduationCap, Bus, ShoppingCart, UtensilsCrossed,
-  TrainFront, Dumbbell, Wine, Loader2, MapPin, Trees,
-  ShieldCheck, Flame, Coffee, RefreshCw, AlertTriangle, Wifi
+  Dumbbell, Loader2, MapPin, Trees,
+  ShieldCheck, Flame, RefreshCw, AlertTriangle, Wifi
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -21,19 +21,15 @@ interface BackendArea {
 }
 
 const infraConfig: Record<string, { label: string; icon: React.ReactNode; color: string; mapColor: string }> = {
-  hospitals:      { label: 'Hospitals & Clinics',    icon: <Building2 className="h-4 w-4" />,      color: 'text-red-500',    mapColor: '#ef4444' },
-  schools:        { label: 'Schools',                icon: <GraduationCap className="h-4 w-4" />,  color: 'text-purple-500', mapColor: '#a855f7' },
-  bus_stops:      { label: 'Bus Stops',              icon: <Bus className="h-4 w-4" />,            color: 'text-blue-400',   mapColor: '#60a5fa' },
-  metro_stations: { label: 'Metro Stations',         icon: <TrainFront className="h-4 w-4" />,     color: 'text-blue-600',   mapColor: '#2563eb' },
-  train_stations: { label: 'Train Stations',         icon: <TrainFront className="h-4 w-4" />,     color: 'text-indigo-500', mapColor: '#6366f1' },
-  supermarkets:   { label: 'Grocery / Supermarkets', icon: <ShoppingCart className="h-4 w-4" />,   color: 'text-green-500',  mapColor: '#22c55e' },
-  restaurants:    { label: 'Restaurants',            icon: <UtensilsCrossed className="h-4 w-4" />, color: 'text-yellow-500', mapColor: '#eab308' },
-  cafes:          { label: 'Cafes',                  icon: <Coffee className="h-4 w-4" />,         color: 'text-amber-400',  mapColor: '#f59e0b' },
-  gyms:           { label: 'Gyms & Fitness',         icon: <Dumbbell className="h-4 w-4" />,       color: 'text-orange-500', mapColor: '#f97316' },
-  bars:           { label: 'Bars & Pubs',            icon: <Wine className="h-4 w-4" />,           color: 'text-pink-500',   mapColor: '#ec4899' },
-  parks:          { label: 'Parks',                  icon: <Trees className="h-4 w-4" />,          color: 'text-green-600',  mapColor: '#16a34a' },
-  police:         { label: 'Police Stations',        icon: <ShieldCheck className="h-4 w-4" />,    color: 'text-blue-700',   mapColor: '#1d4ed8' },
-  fire_stations:  { label: 'Fire Stations',          icon: <Flame className="h-4 w-4" />,          color: 'text-red-600',    mapColor: '#dc2626' },
+  hospitals:     { label: 'Hospitals & Clinics',    icon: <Building2 className="h-4 w-4" />,       color: 'text-red-500',    mapColor: '#ef4444' },
+  schools:       { label: 'Schools',                icon: <GraduationCap className="h-4 w-4" />,   color: 'text-purple-500', mapColor: '#a855f7' },
+  bus_stops:     { label: 'Bus Stops',              icon: <Bus className="h-4 w-4" />,             color: 'text-blue-400',   mapColor: '#60a5fa' },
+  supermarkets:  { label: 'Grocery / Supermarkets', icon: <ShoppingCart className="h-4 w-4" />,    color: 'text-green-500',  mapColor: '#22c55e' },
+  restaurants:   { label: 'Restaurants',            icon: <UtensilsCrossed className="h-4 w-4" />, color: 'text-yellow-500', mapColor: '#eab308' },
+  gyms:          { label: 'Gyms & Fitness',         icon: <Dumbbell className="h-4 w-4" />,        color: 'text-orange-500', mapColor: '#f97316' },
+  parks:         { label: 'Parks',                  icon: <Trees className="h-4 w-4" />,           color: 'text-green-600',  mapColor: '#16a34a' },
+  police:        { label: 'Police Stations',        icon: <ShieldCheck className="h-4 w-4" />,     color: 'text-blue-700',   mapColor: '#1d4ed8' },
+  fire_stations: { label: 'Fire Stations',          icon: <Flame className="h-4 w-4" />,           color: 'text-red-600',    mapColor: '#dc2626' },
 };
 
 const PROVIDER_STEPS = [
@@ -176,34 +172,26 @@ const Facilities = () => {
       .then((res) => {
         const d = res.data;
         setCounts({
-          hospitals:      d.hospital_count      ?? (d.hospitals      ?? []).length,
-          schools:        d.school_count        ?? (d.schools        ?? []).length,
-          bus_stops:      d.bus_stop_count      ?? (d.bus_stops      ?? []).length,
-          metro_stations: d.metro_count         ?? (d.metro_stations ?? []).length,
-          train_stations: d.train_station_count ?? (d.train_stations ?? []).length,
-          supermarkets:   d.supermarket_count   ?? (d.supermarkets   ?? []).length,
-          restaurants:    d.restaurant_count    ?? (d.restaurants    ?? []).length,
-          cafes:          d.cafe_count          ?? (d.cafes          ?? []).length,
-          gyms:           d.gym_count           ?? (d.gyms           ?? []).length,
-          bars:           d.bar_count           ?? (d.bars           ?? []).length,
-          parks:          d.park_count          ?? (d.parks          ?? []).length,
-          police:         d.police_count        ?? (d.police         ?? []).length,
-          fire_stations:  d.fire_station_count  ?? (d.fire_stations  ?? []).length,
+          hospitals:     d.hospital_count      ?? (d.hospitals      ?? []).length,
+          schools:       d.school_count        ?? (d.schools        ?? []).length,
+          bus_stops:     d.bus_stop_count      ?? (d.bus_stops      ?? []).length,
+          supermarkets:  d.supermarket_count   ?? (d.supermarkets   ?? []).length,
+          restaurants:   d.restaurant_count    ?? (d.restaurants    ?? []).length,
+          gyms:          d.gym_count           ?? (d.gyms           ?? []).length,
+          parks:         d.park_count          ?? (d.parks          ?? []).length,
+          police:        d.police_count        ?? (d.police         ?? []).length,
+          fire_stations: d.fire_station_count  ?? (d.fire_stations  ?? []).length,
         });
         plotLocations({
-          hospitals:      d.hospitals      || [],
-          schools:        d.schools        || [],
-          bus_stops:      d.bus_stops      || [],
-          metro_stations: d.metro_stations || [],
-          train_stations: d.train_stations || [],
-          supermarkets:   d.supermarkets   || [],
-          restaurants:    d.restaurants    || [],
-          cafes:          d.cafes          || [],
-          gyms:           d.gyms           || [],
-          bars:           d.bars           || [],
-          parks:          d.parks          || [],
-          police:         d.police         || [],
-          fire_stations:  d.fire_stations  || [],
+          hospitals:     d.hospitals      || [],
+          schools:       d.schools        || [],
+          bus_stops:     d.bus_stops      || [],
+          supermarkets:  d.supermarkets   || [],
+          restaurants:   d.restaurants    || [],
+          gyms:          d.gyms           || [],
+          parks:         d.parks          || [],
+          police:        d.police         || [],
+          fire_stations: d.fire_stations  || [],
         }, area);
       })
       .catch((err) => {
@@ -360,8 +348,8 @@ const Facilities = () => {
             </div>
           )}
 
-          {/* Map legend */}
-          <div className="absolute bottom-4 left-4 z-[400] bg-card/90 backdrop-blur-sm rounded-lg border border-border p-2.5 flex flex-wrap gap-x-3 gap-y-1.5 max-w-xs shadow-lg">
+          {/* Map legend – z-[600] so it floats above loading/error overlays */}
+          <div className="absolute bottom-4 left-4 z-[600] bg-card/90 backdrop-blur-sm rounded-lg border border-border p-2.5 flex flex-wrap gap-x-3 gap-y-1.5 max-w-xs shadow-lg">
             {Object.entries(infraConfig).map(([key, cfg]) => (
               <div key={key} className="flex items-center gap-1.5 text-[10px]">
                 <div className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cfg.mapColor }} />

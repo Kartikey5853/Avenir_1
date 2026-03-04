@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { loginUser, registerUser } from '@/services/api';
+import { useGoogleLogin } from '@react-oauth/google';
+import { loginUser, registerUser, googleLogin as googleLoginApi } from '@/services/api';
 import { AuthUI } from '@/components/ui/auth-fuse';
 import { OtpVerifyScreen } from '@/pages/OtpVerify';
 
 const Login = () => {
   const [signInLoading, setSignInLoading] = useState(false);
   const [signUpLoading, setSignUpLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [otpStep, setOtpStep] = useState<{ email: string; purpose: 'email_verification' | 'login_2fa' } | null>(null);
 
   const navigate = useNavigate();
@@ -52,6 +54,30 @@ const Login = () => {
     }
   };
 
+  // Google OAuth
+  const triggerGoogleLogin = useGoogleLogin({
+    onSuccess: async (resp) => {
+      setGoogleLoading(true);
+      try {
+        const res = await googleLoginApi(resp.access_token);
+        const { access_token, user } = res.data;
+        localStorage.setItem('avenir_token', access_token);
+        localStorage.setItem('avenir_user', JSON.stringify(user));
+        toast({ title: 'Welcome!', description: `Signed in as ${user.email}` });
+        navigate(user.is_profile_completed ? '/dashboard' : '/profile-setup');
+      } catch (err: any) {
+        const msg = err.response?.data?.detail || 'Google sign-in failed.';
+        toast({ title: 'Google login failed', description: msg, variant: 'destructive' });
+      } finally {
+        setGoogleLoading(false);
+      }
+    },
+    onError: () => {
+      toast({ title: 'Google login cancelled', variant: 'destructive' });
+    },
+    flow: 'implicit',
+  });
+
   const handleOtpSuccess = (data: any) => {
     if (otpStep?.purpose === 'login_2fa') {
       const { access_token, user } = data;
@@ -82,6 +108,8 @@ const Login = () => {
       onSignUp={handleSignUp}
       signInLoading={signInLoading}
       signUpLoading={signUpLoading}
+      onGoogleLogin={triggerGoogleLogin}
+      googleLoading={googleLoading}
       defaultTab="signin"
     />
   );

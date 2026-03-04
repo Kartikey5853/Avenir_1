@@ -1,5 +1,6 @@
 ﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import FloatingBubbles from '@/components/FloatingBubbles';
 
 // ── Tiny hook: fade-in on scroll ──────────────────────────────────────────────
 function useFadeIn() {
@@ -163,7 +164,9 @@ export default function Landing() {
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
+      {/* Subtle floating bubbles */}
+      <FloatingBubbles className="z-0" />
 
       {/* ── Sticky Nav ─────────────────────────────────────── */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-card/90 backdrop-blur-md border-b border-border shadow-sm' : 'bg-transparent'}`}>

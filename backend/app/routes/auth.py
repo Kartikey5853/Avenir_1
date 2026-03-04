@@ -3,6 +3,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timedelta
 import logging
+import secrets
+import requests as req_lib
+from pydantic import BaseModel
 
 from app.database import get_db
 from app.models.auth import User
@@ -15,6 +18,66 @@ from app.utils.email import send_otp_email
 from passlib.context import CryptContext
 
 router = APIRouter()
+
+
+# ── Google OAuth ──────────────────────────────────────────────────────────────
+
+class GoogleLoginRequest(BaseModel):
+    token: str  # Google OAuth access_token (implicit flow)
+
+
+@router.post("/google-login")
+def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db)):
+    """
+    Accept a Google access_token from the frontend (implicit flow),
+    verify it via Google UserInfo endpoint, and return our own JWT.
+    """
+    r = req_lib.get(
+        "https://www.googleapis.com/oauth2/v1/userinfo",
+        params={"access_token": payload.token},
+        timeout=10,
+    )
+    if r.status_code != 200:
+        raise HTTPException(status_code=401, detail="Invalid Google token")
+
+    info = r.json()
+    email = info.get("email", "").lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="Google account has no email")
+
+    name = info.get("name") or email.split("@")[0]
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        user = User(
+            name=name,
+            email=email,
+            password_hash=hash_password(secrets.token_urlsafe(32)),
+            email_verified=True,
+            two_factor_enabled=False,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        logging.info("Google OAuth: new user created — %s", email)
+    else:
+        if not user.email_verified:
+            user.email_verified = True
+            db.commit()
+        logging.info("Google OAuth: existing user logged in — %s", email)
+
+    access_token = create_access_token({"sub": str(user.id), "email": user.email})
+    is_completed = bool(getattr(user, "is_profile_completed", False))
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "is_profile_completed": is_completed,
+        },
+    }
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)

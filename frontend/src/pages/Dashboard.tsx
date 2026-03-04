@@ -6,6 +6,7 @@ import {
 import AppLayout from '@/components/AppLayout';
 import { Timeline, TimelineItem } from '@/components/ui/modern-timeline';
 import { getProfile } from '@/services/api';
+import FloatingBubbles from '@/components/FloatingBubbles';
 
 interface ProfileData {
   has_children: boolean;
@@ -79,7 +80,9 @@ const Dashboard = () => {
 
   return (
     <AppLayout>
-      <div className="px-4 md:px-8 py-6 md:py-10 w-full max-w-full space-y-10">
+      <div className="relative">
+        <FloatingBubbles className="z-0" />
+      <div className="relative z-10 px-4 md:px-8 py-6 md:py-10 w-full max-w-full space-y-10">
         {/* Welcome */}
         <div className="animate-slide-up">
           <h1 className="font-bold tracking-tight">
@@ -149,6 +152,7 @@ const Dashboard = () => {
             </p>
           </div>
         </div>
+      </div>
       </div>
     </AppLayout>
   );

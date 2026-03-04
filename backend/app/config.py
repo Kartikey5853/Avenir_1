@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     LOCATIONIQ_KEY: str = ""
     GEOAPIFY_KEY:   str = ""
 
+    # Gemini AI
+    GEMINI_API_KEY: str = ""
+
     class Config:
         env_file = ".env"
 

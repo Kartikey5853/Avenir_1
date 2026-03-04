@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import {
   ArrowLeft, MapPin, Loader2, Building2, GraduationCap, Bus, ShoppingCart,
-  UtensilsCrossed, TrainFront, Dumbbell, Wine, Target, Sparkles, RefreshCw, X
+  UtensilsCrossed, Dumbbell, Sparkles, RefreshCw, X, Target, TrainFront , Wine
 } from 'lucide-react';
 import AnimatedNumber from '@/components/AnimatedNumber';
 import { Button } from '@/components/ui/button';
@@ -57,13 +57,12 @@ const infraLabels: Record<string, { label: string; icon: React.ReactNode }> = {
 interface AreaPickerModalProps {
   title: string;
   areas: BackendArea[];
-  loadingAreas: boolean;
   onConfirm: (mode: 'area' | 'custom', areaId?: string, lat?: number, lon?: number) => void;
   onClose: () => void;
   accentColor?: string;
 }
 
-function AreaPickerModal({ title, areas, loadingAreas, onConfirm, onClose, accentColor = 'text-primary border-primary bg-primary/10' }: AreaPickerModalProps) {
+function AreaPickerModal({ title, onConfirm, onClose }: AreaPickerModalProps) {
   const mapRef        = useRef<L.Map | null>(null);
   const containerRef  = useRef<HTMLDivElement>(null);
   const layerRef      = useRef<L.LayerGroup | null>(null);
@@ -71,10 +70,9 @@ function AreaPickerModal({ title, areas, loadingAreas, onConfirm, onClose, accen
   const [pickedArea,  setPickedArea]  = useState('');
   const [customLat,   setCustomLat]   = useState<number | null>(null);
   const [customLon,   setCustomLon]   = useState<number | null>(null);
-  const [showMap,     setShowMap]     = useState(false);
 
   useEffect(() => {
-    if (!showMap || !containerRef.current || mapRef.current) return;
+    if (!containerRef.current || mapRef.current) return;
     const map = L.map(containerRef.current, { zoomControl: true }).setView([17.44, 78.38], 12);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
     layerRef.current = L.layerGroup().addTo(map);
@@ -91,7 +89,7 @@ function AreaPickerModal({ title, areas, loadingAreas, onConfirm, onClose, accen
       L.marker([e.latlng.lat, e.latlng.lng], { icon }).addTo(layerRef.current!);
     });
     return () => { map.remove(); mapRef.current = null; };
-  }, [showMap]);
+  }, []);
 
   const canConfirm = pickedArea !== '' || (customLat !== null && customLon !== null);
 
@@ -115,59 +113,19 @@ function AreaPickerModal({ title, areas, loadingAreas, onConfirm, onClose, accen
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
-          {/* Predefined areas */}
-          {loadingAreas ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading areas…
-            </div>
-          ) : (
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Predefined Areas</p>
-              <div className="grid grid-cols-2 gap-2">
-                {areas.map((a) => (
-                  <button
-                    key={a.id}
-                    onClick={() => { setPickedArea(String(a.id)); setCustomLat(null); setCustomLon(null); }}
-                    className={`text-left px-3 py-2.5 rounded-lg border text-sm transition-all ${
-                      pickedArea === String(a.id)
-                        ? accentColor
-                        : 'border-border bg-background hover:border-primary/40'
-                    }`}
-                  >
-                    <p className="font-medium truncate">{a.name}</p>
-                    {a.radius_meters && (
-                      <p className="text-[10px] text-muted-foreground">{(a.radius_meters / 1000).toFixed(1)} km radius</p>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
+        <div className="p-6 space-y-4">
+          {/* Map always visible */}
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Click the map to pick a location
+          </p>
+          <div className="rounded-lg overflow-hidden border border-border h-64">
+            <div ref={containerRef} className="h-full w-full" />
+          </div>
+          {customLat !== null && (
+            <p className="text-xs text-muted-foreground text-center">
+              📍 Selected: {customLat.toFixed(4)}, {customLon!.toFixed(4)}
+            </p>
           )}
-
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-xs text-muted-foreground">OR</span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
-
-          {/* Custom map picker */}
-          <div>
-            <Button variant="outline" size="sm" className="w-full mb-3" onClick={() => setShowMap(!showMap)}>
-              <Target className="h-4 w-4 mr-2" />
-              {showMap ? 'Hide Map' : 'Pick a Custom Location on Map'}
-            </Button>
-            {showMap && (
-              <div className="rounded-lg overflow-hidden border border-border h-52">
-                <div ref={containerRef} className="h-full w-full" />
-              </div>
-            )}
-            {customLat !== null && (
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                📍 Selected: {customLat.toFixed(4)}, {customLon!.toFixed(4)}
-              </p>
-            )}
-          </div>
         </div>
 
         <div className="p-6 pt-0">
@@ -557,20 +515,16 @@ const Compare = () => {
         <AreaPickerModal
           title="Select Area 1"
           areas={areas}
-          loadingAreas={loadingAreas}
           onConfirm={handleConfirm1}
           onClose={() => setShowModal1(false)}
-          accentColor="text-primary border-primary bg-primary/10"
         />
       )}
       {showModal2 && (
         <AreaPickerModal
           title="Select Area 2"
           areas={areas}
-          loadingAreas={loadingAreas}
           onConfirm={handleConfirm2}
           onClose={() => setShowModal2(false)}
-          accentColor="text-purple-500 border-purple-500 bg-purple-500/10"
         />
       )}
     </AppLayout>

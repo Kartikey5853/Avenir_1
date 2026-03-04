@@ -1,13 +1,10 @@
 ﻿import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import {
-  ArrowLeft, MapPin, Loader2, Building2, GraduationCap, Bus, ShoppingCart,
-  UtensilsCrossed, TrainFront, User, Sparkles, RefreshCw,
-  Dumbbell, Wine, Wifi, AlertTriangle
+  ArrowLeft, MapPin, Loader2, User, Sparkles, RefreshCw,
+  Wifi, AlertTriangle, X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import AppLayout from '@/components/AppLayout';
 import AnimatedNumber from '@/components/AnimatedNumber';
 import { getAreaScore, getCustomScore, getAIRecommendation, updateProfile, getProfile } from '@/services/api';
@@ -25,68 +22,169 @@ interface ScoreData {
   radius_m?: number | null;
 }
 
-const COLORS = ['#f97316', '#3b82f6', '#a855f7', '#22c55e', '#eab308'];
-
 const PROVIDER_STEPS = [
-  { id: 'geoapify',   name: 'Geoapify Batch',    detail: 'All 13 categories in 1 call — fastest' },
-  { id: 'mapbox',     name: 'Mapbox Search Box', detail: 'Commercial precision fallback'          },
-  { id: 'locationiq', name: 'LocationIQ Nearby', detail: 'OSM-powered fallback'                  },
-  { id: 'overpass',   name: 'Overpass API',      detail: 'Free OSM final fallback'               },
+  { id: 'geoapify',   name: 'Geoapify Batch',    detail: 'All categories in 1 call — fastest' },
+  { id: 'mapbox',     name: 'Mapbox Search Box', detail: 'Commercial precision fallback'       },
+  { id: 'locationiq', name: 'LocationIQ Nearby', detail: 'OSM-powered fallback'               },
+  { id: 'overpass',   name: 'Overpass API',      detail: 'Free OSM final fallback'            },
 ];
 const LOAD_TIMEOUT_MS = 30_000;
 
-const categoryIcons: Record<string, React.ReactNode> = {
-  transport: <Bus className="h-4 w-4" />,
-  healthcare: <Building2 className="h-4 w-4" />,
-  education: <GraduationCap className="h-4 w-4" />,
-  lifestyle: <UtensilsCrossed className="h-4 w-4" />,
-  grocery: <ShoppingCart className="h-4 w-4" />,
+const CAT_CFG: Record<string, { color: string; label: string; angle: number }> = {
+  safety:    { color: '#ef4444', label: 'Safety',    angle: -90  },
+  family:    { color: '#a855f7', label: 'Family',    angle: -18  },
+  transport: { color: '#3b82f6', label: 'Transport', angle: 54   },
+  lifestyle: { color: '#f97316', label: 'Lifestyle', angle: 126  },
+  grocery:   { color: '#22c55e', label: 'Grocery',   angle: 198  },
 };
 
-const infraLabels: Record<string, { label: string; icon: React.ReactNode }> = {
-  hospital_count:       { label: 'Hospitals',       icon: <Building2 className="h-4 w-4 text-red-500" /> },
-  school_count:         { label: 'Schools',         icon: <GraduationCap className="h-4 w-4 text-purple-500" /> },
-  bus_stop_count:       { label: 'Bus Stops',       icon: <Bus className="h-4 w-4 text-blue-500" /> },
-  metro_count:          { label: 'Metro',           icon: <TrainFront className="h-4 w-4 text-blue-600" /> },
-  train_station_count:  { label: 'Train Stations',  icon: <TrainFront className="h-4 w-4 text-indigo-500" /> },
-  supermarket_count:    { label: 'Supermarkets',    icon: <ShoppingCart className="h-4 w-4 text-green-500" /> },
-  restaurant_count:     { label: 'Restaurants',     icon: <UtensilsCrossed className="h-4 w-4 text-yellow-500" /> },
-  cafe_count:           { label: 'Cafes',           icon: <UtensilsCrossed className="h-4 w-4 text-amber-500" /> },
-  gym_count:            { label: 'Gyms',            icon: <Dumbbell className="h-4 w-4 text-orange-500" /> },
-  bar_count:            { label: 'Bars',            icon: <Wine className="h-4 w-4 text-pink-500" /> },
-  park_count:           { label: 'Parks',           icon: <MapPin className="h-4 w-4 text-green-600" /> },
-  police_count:         { label: 'Police',          icon: <Building2 className="h-4 w-4 text-blue-700" /> },
-  fire_station_count:   { label: 'Fire Stations',   icon: <Building2 className="h-4 w-4 text-red-600" /> },
-};
+const CAT_ORDER = ['safety', 'family', 'transport', 'lifestyle', 'grocery'];
+
+const FACILITY_CFG: Array<{ key: string; label: string; color: string }> = [
+  { key: 'hospital_count',      label: 'Hospitals',    color: '#ef4444' },
+  { key: 'school_count',        label: 'Schools',      color: '#a855f7' },
+  { key: 'bus_stop_count',      label: 'Bus Stops',    color: '#3b82f6' },
+  { key: 'park_count',          label: 'Parks',        color: '#22c55e' },
+  { key: 'restaurant_count',    label: 'Restaurants',  color: '#eab308' },
+  { key: 'supermarket_count',   label: 'Supermarkets', color: '#16a34a' },
+  { key: 'gym_count',           label: 'Gyms',         color: '#f97316' },
+  { key: 'police_count',        label: 'Police',       color: '#1d4ed8' },
+  { key: 'fire_station_count',  label: 'Fire Stn.',    color: '#dc2626' },
+];
+
+function RadarChart({ scores, weights }: { scores: Record<string, number>; weights?: Record<string, number> }) {
+  const cx = 110, cy = 100, maxR = 58, labelR = 80;
+  const toXY = (angle: number, pct: number) => {
+    const rad = (angle * Math.PI) / 180;
+    const r = (pct / 100) * maxR;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  };
+  const toLabelXY = (angle: number) => {
+    const rad = (angle * Math.PI) / 180;
+    return { x: cx + labelR * Math.cos(rad), y: cy + labelR * Math.sin(rad) };
+  };
+  const textAnchor = (angle: number) => {
+    const cos = Math.cos((angle * Math.PI) / 180);
+    if (cos > 0.3) return 'start';
+    if (cos < -0.3) return 'end';
+    return 'middle';
+  };
+  const cats = CAT_ORDER.filter((k) => k in (scores ?? {}));
+  const dataPoints = cats.map((k) => toXY(CAT_CFG[k].angle, scores[k] ?? 0));
+  const polyPts = dataPoints.map((p) => `${p.x},${p.y}`).join(' ');
+  const levels = [100, 75, 50, 25];
+  return (
+    <svg viewBox="0 0 220 200" className="w-full max-w-[220px] mx-auto">
+      {levels.map((lvl) => {
+        const pts = cats.map((k) => toXY(CAT_CFG[k].angle, lvl));
+        return (
+          <polygon key={lvl} points={pts.map((p) => `${p.x},${p.y}`).join(' ')}
+            fill="none" stroke="hsl(220 13% 22%)" strokeWidth="0.5" />
+        );
+      })}
+      {cats.map((k) => {
+        const outer = toXY(CAT_CFG[k].angle, 100);
+        return <line key={k} x1={cx} y1={cy} x2={outer.x} y2={outer.y} stroke="hsl(220 13% 22%)" strokeWidth="0.5" />;
+      })}
+      <polygon points={polyPts} fill="oklch(0.637 0.128 66.29)" fillOpacity="0.28"
+        stroke="oklch(0.637 0.128 66.29)" strokeWidth="1.8" />
+      {dataPoints.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="3" fill="oklch(0.637 0.128 66.29)" />
+      ))}
+      {/* Weight labels on each axis */}
+      {cats.map((k) => {
+        const { x, y } = toLabelXY(CAT_CFG[k].angle);
+        const anchor = textAnchor(CAT_CFG[k].angle);
+        const w = weights ? Math.round((weights[k] ?? 0) * 100) : null;
+        return (
+          <text key={k} x={x} y={y} textAnchor={anchor} fontSize="6.5" fill={CAT_CFG[k].color}
+            fontFamily="system-ui,sans-serif" fontWeight="600">
+            <tspan x={x} dy="0">{CAT_CFG[k].label}</tspan>
+            {w !== null && <tspan x={x} dy="8" fill="hsl(215 20% 55%)" fontWeight="400">{w}% weight</tspan>}
+          </text>
+        );
+      })}
+    </svg>
+  );
+}
+
+function ProfileModal({
+  values, onChange, onSave, onClose, saving,
+}: {
+  values: { hasChildren: boolean; reliesOnTransport: boolean; prefersLifestyle: boolean; safetyFirst: boolean };
+  onChange: (key: keyof typeof values, val: boolean) => void;
+  onSave: () => void;
+  onClose: () => void;
+  saving: boolean;
+}) {
+  const questions = [
+    { key: 'hasChildren' as const,       label: 'Has Children?',       desc: 'Increases weight on schools & parks' },
+    { key: 'reliesOnTransport' as const, label: 'Public Transport?',   desc: 'Increases weight on bus stops'       },
+    { key: 'prefersLifestyle' as const,  label: 'Vibrant Lifestyle?',  desc: 'Increases weight on restaurants'     },
+    { key: 'safetyFirst' as const,       label: 'Safety Priority?',    desc: 'Increases weight on hospitals, police' },
+  ];
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-card border border-border rounded-2xl shadow-2xl p-6 w-[380px] max-w-[90vw] space-y-5"
+        onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h2 className="font-bold text-lg flex items-center gap-2">
+            <User className="h-5 w-5 text-primary" /> Custom Profile
+          </h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground -mt-2">
+          Your answers change the category weights and re-compute your score.
+        </p>
+        <div className="space-y-4">
+          {questions.map(({ key, label, desc }) => (
+            <div key={key}>
+              <p className="text-sm font-medium">{label}</p>
+              <p className="text-[11px] text-muted-foreground mb-2">{desc}</p>
+              <div className="grid grid-cols-2 gap-2">
+                {[{ l: 'Yes', v: true }, { l: 'No', v: false }].map(({ l, v }) => (
+                  <button key={l} onClick={() => onChange(key, v)}
+                    className={`h-9 rounded-lg border text-sm font-medium transition-all ${
+                      values[key] === v
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border bg-background text-muted-foreground hover:bg-muted'
+                    }`}>{l}</button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <Button onClick={onSave} disabled={saving} className="w-full gradient-warm text-primary-foreground font-semibold">
+          {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving…</> : <><RefreshCw className="h-4 w-4 mr-2" /> Save & Re-score</>}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 const ScoreResults = () => {
   const { areaId } = useParams<{ areaId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [data, setData] = useState<ScoreData | null>(null);
+  const [data, setData]       = useState<ScoreData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // 4-question profile state
-  const [hasChildren,             setHasChildren]             = useState(false);
-  const [reliesOnTransport,       setReliesOnTransport]       = useState(false);
-  const [prefersLifestyle,        setPrefersLifestyle]        = useState(false);
-  const [safetyFirst,             setSafetyFirst]             = useState(false);
-  const [profileDirty, setProfileDirty] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [hasChildren,       setHasChildren]       = useState(false);
+  const [reliesOnTransport, setReliesOnTransport] = useState(false);
+  const [prefersLifestyle,  setPrefersLifestyle]  = useState(false);
+  const [safetyFirst,       setSafetyFirst]       = useState(false);
   const [saving, setSaving] = useState(false);
-
-  // AI recommendation
-  const [aiRec, setAiRec] = useState<string | null>(null);
+  const [aiRec, setAiRec]         = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
-
-  // 4-provider loading animation state
-  const [progress,       setProgress]       = useState(0);
-  const [providerIdx,    setProviderIdx]     = useState(0);
-  const [timedOut,       setTimedOut]        = useState(false);
-  const progressRef     = useRef<ReturnType<typeof setInterval> | null>(null);
-  const providerRef     = useRef<ReturnType<typeof setInterval> | null>(null);
-  const timeoutRef      = useRef<ReturnType<typeof setTimeout>  | null>(null);
-
+  const [progress,    setProgress]    = useState(0);
+  const [providerIdx, setProviderIdx] = useState(0);
+  const [timedOut,    setTimedOut]    = useState(false);
+  const progressRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const providerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef   = useRef<ReturnType<typeof setTimeout>  | null>(null);
   const isCustom = !areaId || areaId === 'custom';
 
   const stopAnim = useCallback(() => {
@@ -99,29 +197,14 @@ const ScoreResults = () => {
   const startAnim = useCallback(() => {
     setProgress(0); setProviderIdx(0); setTimedOut(false);
     let p = 0;
-    progressRef.current = setInterval(() => {
-      p += p < 70 ? 3 : p < 90 ? 0.8 : 0.2;
-      if (p > 99) p = 99;
-      setProgress(Math.round(p));
-    }, 300);
+    progressRef.current = setInterval(() => { p += p < 70 ? 3 : p < 90 ? 0.8 : 0.2; if (p > 99) p = 99; setProgress(Math.round(p)); }, 300);
     let idx = 0;
-    providerRef.current = setInterval(() => {
-      idx = (idx + 1) % PROVIDER_STEPS.length;
-      setProviderIdx(idx);
-    }, 2500);
-    timeoutRef.current = setTimeout(() => {
-      stopAnim();
-      setTimedOut(true);
-      setLoading(false);
-    }, LOAD_TIMEOUT_MS);
+    providerRef.current = setInterval(() => { idx = (idx + 1) % PROVIDER_STEPS.length; setProviderIdx(idx); }, 2500);
+    timeoutRef.current = setTimeout(() => { stopAnim(); setTimedOut(true); setLoading(false); }, LOAD_TIMEOUT_MS);
   }, [stopAnim]);
 
   const fetchScore = useCallback(() => {
-    setLoading(true);
-    setTimedOut(false);
-    setError(null);
-    startAnim();
-    setAiRec(null);
+    setLoading(true); setTimedOut(false); setError(null); startAnim(); setAiRec(null);
     if (isCustom) {
       const lat = parseFloat(searchParams.get('lat') || '0');
       const lon = parseFloat(searchParams.get('lon') || '0');
@@ -137,363 +220,258 @@ const ScoreResults = () => {
     }
   }, [areaId, searchParams, isCustom, startAnim, stopAnim]);
 
-  useEffect(() => {
-    fetchScore();
-  }, [fetchScore]);
+  useEffect(() => { fetchScore(); }, [fetchScore]);
 
-  // Load profile into editable fields
   useEffect(() => {
-    getProfile()
-      .then((res) => {
-        if (res.data) {
-          setHasChildren(!!res.data.has_children);
-          setReliesOnTransport(!!res.data.relies_on_public_transport);
-          setPrefersLifestyle(!!res.data.prefers_vibrant_lifestyle);
-          setSafetyFirst(!!res.data.safety_priority);
-        }
-      })
-      .catch(() => {});
+    getProfile().then((res) => {
+      if (res.data) {
+        setHasChildren(!!res.data.has_children);
+        setReliesOnTransport(!!res.data.relies_on_public_transport);
+        setPrefersLifestyle(!!res.data.prefers_vibrant_lifestyle);
+        setSafetyFirst(!!res.data.safety_priority);
+      }
+    }).catch(() => {});
   }, []);
 
-  // Save profile changes and re-score
-  const handleUpdateAndRescore = async () => {
-    setSaving(true);
-    try {
-      await updateProfile({
-        has_children:               hasChildren,
-        relies_on_public_transport: reliesOnTransport,
-        prefers_vibrant_lifestyle:  prefersLifestyle,
-        safety_priority:            safetyFirst,
-      });
-      setProfileDirty(false);
-      fetchScore();
-    } catch {
-      // silently ignore
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const markDirty = () => setProfileDirty(true);
-
-  // Fetch AI recommendation
   const fetchAIRecommendation = async () => {
     if (!data) return;
     setAiLoading(true);
     try {
-      const res = await getAIRecommendation({
-        locality_name: data.area_name,
-        final_score: data.overall_score,
-        category_scores: data.category_scores,
-        infrastructure: {},
-        profile_context: null,
-      });
+      const res = await getAIRecommendation({ locality_name: data.area_name, final_score: data.overall_score, category_scores: data.category_scores, infrastructure: {}, profile_context: null, lat: lat, lon: lon });
       setAiRec(res.data.recommendation);
-    } catch {
-      setAiRec('Unable to generate recommendation. Please try again.');
-    } finally {
-      setAiLoading(false);
-    }
+    } catch { setAiRec('Unable to generate recommendation. Please try again.'); }
+    finally { setAiLoading(false); }
   };
 
-  // Auto-fetch AI recommendation when score loads
-  useEffect(() => {
-    if (data && !aiRec && !aiLoading) {
-      fetchAIRecommendation();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data]);
+  useEffect(() => { if (data && !aiRec && !aiLoading) fetchAIRecommendation(); }, [data]); // eslint-disable-line
 
-  if (loading) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center h-[calc(100vh-3.5rem)] px-4">
-          <div className="bg-card border border-border rounded-2xl shadow-2xl p-8 w-[480px] max-w-full space-y-6">
-            <div>
-              <h3 className="font-bold text-lg tracking-tight flex items-center gap-2">
-                <Wifi className="h-5 w-5 text-primary animate-pulse" />
-                Computing Lifestyle Score
-              </h3>
-              <p className="text-xs text-muted-foreground mt-1">
-                Racing <strong>4 providers simultaneously</strong> via Geoapify Batch — fastest response wins.
-              </p>
-            </div>
-            <div className="space-y-2">
-              {PROVIDER_STEPS.map((p, i) => (
-                <div key={p.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg border transition-all duration-500 ${
-                  i === providerIdx ? 'border-primary bg-primary/10 scale-[1.02]' : 'border-border bg-background opacity-50'
-                }`}>
-                  <div className={`h-2 w-2 rounded-full flex-shrink-0 ${i === providerIdx ? 'bg-primary animate-pulse' : 'bg-muted-foreground'}`} />
-                  <div className="min-w-0">
-                    <p className={`text-xs font-semibold truncate ${i === providerIdx ? 'text-primary' : 'text-muted-foreground'}`}>{p.name}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{p.detail}</p>
-                  </div>
-                  {i === providerIdx && <Loader2 className="h-3 w-3 animate-spin text-primary ml-auto flex-shrink-0" />}
+  const handleSaveProfile = async () => {
+    setSaving(true);
+    try {
+      await updateProfile({ has_children: hasChildren, relies_on_public_transport: reliesOnTransport, prefers_vibrant_lifestyle: prefersLifestyle, safety_priority: safetyFirst });
+      setProfileOpen(false); fetchScore();
+    } catch { /* ignore */ } finally { setSaving(false); }
+  };
+
+  if (loading) return (
+    <AppLayout>
+      <div className="flex items-center justify-center h-[calc(100vh-3.5rem)] px-4">
+        <div className="bg-card border border-border rounded-2xl shadow-2xl p-8 w-[480px] max-w-full space-y-6">
+          <div>
+            <h3 className="font-bold text-lg tracking-tight flex items-center gap-2">
+              <Wifi className="h-5 w-5 text-primary animate-pulse" /> Computing Lifestyle Score
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1">Racing <strong>4 providers simultaneously</strong> — fastest response wins.</p>
+          </div>
+          <div className="space-y-2">
+            {PROVIDER_STEPS.map((p, i) => (
+              <div key={p.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg border transition-all duration-500 ${i === providerIdx ? 'border-primary bg-primary/10 scale-[1.02]' : 'border-border bg-background opacity-50'}`}>
+                <div className={`h-2 w-2 rounded-full flex-shrink-0 ${i === providerIdx ? 'bg-primary animate-pulse' : 'bg-muted-foreground'}`} />
+                <div className="min-w-0">
+                  <p className={`text-xs font-semibold truncate ${i === providerIdx ? 'text-primary' : 'text-muted-foreground'}`}>{p.name}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{p.detail}</p>
                 </div>
-              ))}
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Fetching infrastructure & computing score…</span>
-                <span>{progress}%</span>
+                {i === providerIdx && <Loader2 className="h-3 w-3 animate-spin text-primary ml-auto flex-shrink-0" />}
               </div>
-              <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                <div className="h-2 rounded-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
-              </div>
-              <p className="text-[10px] text-muted-foreground text-center">May take up to 30 seconds on first load</p>
+            ))}
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Fetching infrastructure & computing score…</span><span>{progress}%</span>
             </div>
+            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+              <div className="h-2 rounded-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center">May take up to 30 seconds on first load</p>
           </div>
         </div>
-      </AppLayout>
-    );
-  }
+      </div>
+    </AppLayout>
+  );
 
-  if (timedOut && !data) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center h-[calc(100vh-3.5rem)] px-4">
-          <div className="bg-card border border-border rounded-2xl shadow-2xl p-8 w-96 max-w-full text-center space-y-4">
-            <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto" />
-            <h3 className="font-bold text-lg">Taking Longer Than Expected</h3>
-            <p className="text-sm text-muted-foreground">The infrastructure fetch timed out. This can happen when APIs are under load.</p>
-            <Button onClick={fetchScore} className="w-full gradient-warm text-primary-foreground">
-              <RefreshCw className="h-4 w-4 mr-2" /> Retry Now
-            </Button>
-            <Button variant="outline" onClick={() => navigate('/map')} className="w-full">
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Map
-            </Button>
-          </div>
+  if (timedOut && !data) return (
+    <AppLayout>
+      <div className="flex items-center justify-center h-[calc(100vh-3.5rem)] px-4">
+        <div className="bg-card border border-border rounded-2xl shadow-2xl p-8 w-96 max-w-full text-center space-y-4">
+          <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto" />
+          <h3 className="font-bold text-lg">Taking Longer Than Expected</h3>
+          <p className="text-sm text-muted-foreground">The infrastructure fetch timed out. APIs may be under load.</p>
+          <Button onClick={fetchScore} className="w-full gradient-warm text-primary-foreground"><RefreshCw className="h-4 w-4 mr-2" /> Retry Now</Button>
+          <Button variant="outline" onClick={() => navigate('/map')} className="w-full"><ArrowLeft className="h-4 w-4 mr-2" /> Back to Map</Button>
         </div>
-      </AppLayout>
-    );
-  }
+      </div>
+    </AppLayout>
+  );
 
-  if (error || !data) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center h-[calc(100vh-3.5rem)] px-4">
-          <div className="bg-card border border-border rounded-2xl shadow-2xl p-8 w-96 max-w-full text-center space-y-4">
-            <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
-            <p className="font-medium">{error || 'Failed to load score'}</p>
-            <Button onClick={fetchScore} className="w-full gradient-warm text-primary-foreground">
-              <RefreshCw className="h-4 w-4 mr-2" /> Retry
-            </Button>
-            <Button variant="outline" onClick={() => navigate('/map')} className="w-full">
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Map
-            </Button>
-          </div>
+  if (error || !data) return (
+    <AppLayout>
+      <div className="flex items-center justify-center h-[calc(100vh-3.5rem)] px-4">
+        <div className="bg-card border border-border rounded-2xl shadow-2xl p-8 w-96 max-w-full text-center space-y-4">
+          <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
+          <p className="font-medium">{error || 'Failed to load score'}</p>
+          <Button onClick={fetchScore} className="w-full gradient-warm text-primary-foreground"><RefreshCw className="h-4 w-4 mr-2" /> Retry</Button>
+          <Button variant="outline" onClick={() => navigate('/map')} className="w-full"><ArrowLeft className="h-4 w-4 mr-2" /> Back to Map</Button>
         </div>
-      </AppLayout>
-    );
-  }
+      </div>
+    </AppLayout>
+  );
 
-  const chartData = Object.entries(data.category_scores ?? {}).map(([key, val]) => ({
-    name: key.charAt(0).toUpperCase() + key.slice(1),
-    score: val,
-  }));
-
-  const weightData = Object.entries(data.weights ?? {}).map(([key, val], i) => ({
-    name: key.charAt(0).toUpperCase() + key.slice(1),
-    value: Math.round(val * 100),
-    color: COLORS[i % COLORS.length],
-  }));
-
-  const scoreColor = data.overall_score >= 75 ? 'text-green-500' : data.overall_score >= 50 ? 'text-yellow-500' : 'text-red-500';
+  const overallScore = data.overall_score;
+  const scoreColor = overallScore >= 75 ? '#22c55e' : overallScore >= 50 ? 'oklch(0.637 0.128 66.29)' : '#ef4444';
+  const summaryShort = overallScore >= 85 ? 'Excellent' : overallScore >= 70 ? 'Very Good' : overallScore >= 55 ? 'Good' : overallScore >= 40 ? 'Moderate' : 'Below Average';
+  const lat = isCustom ? parseFloat(searchParams.get('lat') || '0') : null;
+  const lon = isCustom ? parseFloat(searchParams.get('lon') || '0') : null;
+  const coordLabel = lat && lon ? `${lat.toFixed(2)}°N ${lon.toFixed(2)}°E` : data.area_name;
 
   return (
     <AppLayout>
-      <div className="px-4 md:px-8 py-6 md:py-10 w-full max-w-full space-y-8">
+      {profileOpen && (
+        <ProfileModal
+          values={{ hasChildren, reliesOnTransport, prefersLifestyle, safetyFirst }}
+          onChange={(key, val) => {
+            if (key === 'hasChildren')       setHasChildren(val);
+            if (key === 'reliesOnTransport') setReliesOnTransport(val);
+            if (key === 'prefersLifestyle')  setPrefersLifestyle(val);
+            if (key === 'safetyFirst')       setSafetyFirst(val);
+          }}
+          onSave={handleSaveProfile}
+          onClose={() => setProfileOpen(false)}
+          saving={saving}
+        />
+      )}
+      <div className="px-4 md:px-8 py-6 max-w-5xl mx-auto space-y-5">
         {/* Header */}
-        <div className="flex items-center justify-between animate-slide-up">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => navigate('/map')}>
               <ArrowLeft className="h-4 w-4 mr-1" /> Back
             </Button>
             <div>
-              <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 tracking-tight">
-                <MapPin className="h-5 w-5 text-primary" /> {data.area_name}
+              <h1 className="text-lg font-bold flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-primary" /> {data.area_name}
               </h1>
-              <p className="text-muted-foreground text-sm mt-1">Lifestyle Score Analysis</p>
+              <p className="text-xs text-muted-foreground">Lifestyle Score Analysis</p>
             </div>
           </div>
-
+          <Button variant="outline" size="sm" onClick={() => setProfileOpen(true)}
+            className="flex items-center gap-2 border-primary/40 text-primary hover:bg-primary/10">
+            <User className="h-4 w-4" /> Custom Profile
+          </Button>
         </div>
 
-        {/* â”€â”€ 1. OVERALL SCORE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-        <div className="bg-card rounded-xl border border-border p-8 shadow-card hover-lift animate-slide-up">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-            <div>
-              <p className="text-sm text-muted-foreground mb-2">Overall Lifestyle Score</p>
-              <div className="flex items-baseline gap-3">
-                <AnimatedNumber value={data.overall_score} duration={800} className={`text-7xl font-extrabold ${scoreColor}`} />
-                <span className="text-2xl text-muted-foreground">/100</span>
-              </div>
-              <p className="text-muted-foreground text-sm mt-3">
-                {data.overall_score >= 75 ? 'Excellent area for your lifestyle!' : data.overall_score >= 50 ? 'Good area with room for improvement.' : 'This area may not fully match your preferences.'}
-              </p>
-            </div>
-            <div className="sm:w-40 space-y-2">
-              <Progress value={data.overall_score} className="h-3" />
-              {data.summary && <p className="text-xs text-muted-foreground leading-relaxed">{data.summary}</p>}
+        {/* Dashboard card */}
+        <div className="bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+          {/* Title bar */}
+          <div className="flex items-center gap-2 px-5 py-3.5 border-b border-border bg-card/80">
+            <div className="h-3 w-3 rounded-full bg-red-500/70" />
+            <div className="h-3 w-3 rounded-full bg-yellow-500/70" />
+            <div className="h-3 w-3 rounded-full bg-green-500/70" />
+            <span className="ml-3 text-xs text-muted-foreground font-mono">avenir · area intelligence dashboard</span>
+            <div className="ml-auto flex items-center gap-3">
+              <div className="px-2 py-0.5 rounded bg-primary/20 text-xs text-primary font-semibold">LIVE</div>
+              <span className="text-xs text-muted-foreground hidden sm:block">{coordLabel}</span>
             </div>
           </div>
-          {/* Highlights & Concerns inline */}
-          {((data.highlights?.length ?? 0) > 0 || (data.concerns?.length ?? 0) > 0) && (
-            <div className="mt-5 pt-4 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {(data.highlights?.length ?? 0) > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-2">Highlights</p>
-                  <ul className="space-y-1">
-                    {data.highlights.map((h, i) => (
-                      <li key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                        <span className="text-green-500 flex-shrink-0">âœ“</span>{h}
-                      </li>
-                    ))}
-                  </ul>
+
+          {/* Score + Category grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 divide-y md:divide-y-0 md:divide-x divide-border">
+            {/* Left: Score + Radar */}
+            <div className="p-6 space-y-4">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Overall Lifestyle Score</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-7xl font-black" style={{ color: scoreColor }}>
+                    <AnimatedNumber value={overallScore} duration={900} className="" />
+                  </span>
+                  <span className="text-xl text-muted-foreground">/100</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  <span className="font-semibold" style={{ color: scoreColor }}>{summaryShort}</span>
+                  {' · '}{data.summary}
+                </p>
+              </div>
+              <RadarChart scores={data.category_scores} weights={data.weights} />
+              {((data.highlights?.length ?? 0) > 0 || (data.concerns?.length ?? 0) > 0) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  {(data.highlights?.length ?? 0) > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold text-green-500 uppercase tracking-wider mb-1">Highlights</p>
+                      <ul className="space-y-0.5">
+                        {data.highlights.map((h, i) => (
+                          <li key={i} className="text-[11px] text-muted-foreground flex gap-1">
+                            <span className="text-green-500 flex-shrink-0">✓</span>{h}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {(data.concerns?.length ?? 0) > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold text-orange-500 uppercase tracking-wider mb-1">Concerns</p>
+                      <ul className="space-y-0.5">
+                        {data.concerns.map((c, i) => (
+                          <li key={i} className="text-[11px] text-muted-foreground flex gap-1">
+                            <span className="text-orange-400 flex-shrink-0">⚠</span>{c}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
-              {(data.concerns?.length ?? 0) > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-orange-500 uppercase tracking-wider mb-2">Concerns</p>
-                  <ul className="space-y-1">
-                    {data.concerns.map((c, i) => (
-                      <li key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                        <span className="text-orange-400 flex-shrink-0">âš </span>{c}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+            </div>
+
+            {/* Right: Category breakdown */}
+            <div className="p-6 space-y-5">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Category Breakdown</p>
+              <div className="space-y-4">
+                {CAT_ORDER.filter((k) => k in (data.category_scores ?? {})).map((key) => {
+                  const cfg = CAT_CFG[key];
+                  const score = Math.round(data.category_scores[key] ?? 0);
+                  const weight = Math.round((data.weights?.[key] ?? 0) * 100);
+                  return (
+                    <div key={key} className="space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">{cfg.label}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-muted-foreground">weight {weight}%</span>
+                          <span className="text-sm font-bold" style={{ color: cfg.color }}>{score}%</span>
+                        </div>
+                      </div>
+                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-700"
+                          style={{ width: `${score}%`, backgroundColor: cfg.color }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom: Facility counts */}
+          {data.counts && Object.keys(data.counts).length > 0 && (
+            <div className="border-t border-border px-6 py-5">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-4">Nearby Facilities</p>
+              <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-3">
+                {FACILITY_CFG.map(({ key, label, color }) => {
+                  const count = data.counts?.[key] ?? 0;
+                  return (
+                    <div key={key} className="text-center p-3 rounded-xl bg-background border border-border hover:border-primary/30 transition-colors">
+                      <p className="text-2xl font-black" style={{ color }}>{count}</p>
+                      <p className="text-[9px] text-muted-foreground mt-0.5 leading-tight">{label}</p>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
 
-        {/* â”€â”€ 2. CATEGORY SCORES + WEIGHT DISTRIBUTION | YOUR PROFILE â”€â”€ */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-          {/* Category Scores + Weight Distribution (left 2 cols) */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Category Scores */}
-            <div className="bg-card rounded-xl border border-border p-6 shadow-card hover-lift animate-slide-up">
-              <h2 className="font-semibold text-lg tracking-tight pb-3 mb-5 border-b border-border">Category Scores</h2>
-              <div className="h-52">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 91%)" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Bar dataKey="score" fill="hsl(31,100%,71%)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="mt-4 space-y-2">
-                {Object.entries(data.category_scores ?? {}).map(([key, val]) => (
-                  <div key={key} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm">
-                      {categoryIcons[key]}
-                      <span className="capitalize text-muted-foreground">{key}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Progress value={val} className="w-24 h-2" />
-                      <span className="text-sm font-semibold w-10 text-right">{Math.round(val)}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Weight Distribution */}
-            <div className="bg-card rounded-xl border border-border p-6 shadow-card hover-lift animate-slide-up">
-              <h2 className="font-semibold text-lg tracking-tight pb-3 mb-5 border-b border-border">Weight Distribution</h2>
-              <div className="flex flex-col sm:flex-row items-center gap-6">
-                <div className="w-44 h-44 shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={weightData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={30} outerRadius={65} paddingAngle={3} label={false}>
-                        {weightData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                      </Pie>
-                      <Tooltip formatter={(val: number) => `${val}%`} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="flex-1 space-y-2 w-full">
-                  {weightData.map((w) => (
-                    <div key={w.name} className="flex items-center gap-3">
-                      <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: w.color }} />
-                      <span className="text-sm text-muted-foreground flex-1">{w.name}</span>
-                      <div className="w-20"><Progress value={w.value} className="h-2" /></div>
-                      <span className="text-sm font-semibold w-10 text-right">{w.value}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Your Profile (right 1 col) */}
-          <div className="bg-card rounded-xl border border-border p-6 shadow-card hover-lift animate-slide-up self-start sticky top-4">
-            <h2 className="font-semibold flex items-center gap-2 text-lg tracking-tight pb-3 mb-4 border-b border-border">
-              <User className="h-5 w-5 text-primary" /> Your Profile
-            </h2>
-            <p className="text-xs text-muted-foreground mb-4">Change your profile to see how it affects the score</p>
-            <div className="space-y-3">
-              {[
-                { key: 'hasChildren',       label: 'Has Children?',       val: hasChildren,       set: setHasChildren       },
-                { key: 'reliesOnTransport', label: 'Public Transport?',   val: reliesOnTransport, set: setReliesOnTransport },
-                { key: 'prefersLifestyle',  label: 'Vibrant Lifestyle?',  val: prefersLifestyle,  set: setPrefersLifestyle  },
-                { key: 'safetyFirst',       label: 'Safety Priority?',    val: safetyFirst,       set: setSafetyFirst       },
-              ].map(({ key, label, val, set }) => (
-                <div key={key}>
-                  <p className="text-xs text-muted-foreground mb-1.5">{label}</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[{ l: 'Yes', v: true }, { l: 'No', v: false }].map(({ l, v }) => (
-                      <button
-                        key={l}
-                        onClick={() => { set(v); markDirty(); }}
-                        className={`h-8 rounded-md border text-xs font-medium transition-all ${val === v ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-muted-foreground hover:bg-muted'}`}
-                      >
-                        {l}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              {profileDirty && (
-                <Button onClick={handleUpdateAndRescore} disabled={saving} className="w-full gradient-warm text-primary-foreground font-semibold text-xs" size="sm">
-                  {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
-                  Save & Re-score
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* â”€â”€ 3. NEARBY FACILITIES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-        {(data.counts && Object.keys(data.counts).length > 0) && (
-          <div className="bg-card rounded-xl border border-border p-6 shadow-card hover-lift animate-slide-up">
-            <h2 className="font-semibold text-lg tracking-tight pb-3 mb-4 border-b border-border">Nearby Facilities</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2">
-              {Object.entries(data.counts).map(([k, v]) => {
-                const lbl = infraLabels[k];
-                return (
-                  <div key={k} className="flex items-center gap-2 p-2.5 rounded-lg border border-border bg-background hover:border-primary/30 transition-all">
-                    {lbl?.icon ?? <MapPin className="h-4 w-4 text-muted-foreground" />}
-                    <div className="min-w-0">
-                      <p className="text-xs text-muted-foreground truncate">{lbl?.label ?? k.replace(/_count$/, '').replace(/_/g, ' ')}</p>
-                      <p className={`text-base font-bold ${v === 0 ? 'text-muted-foreground' : ''}`}>{v}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* â”€â”€ 4. AI RECOMMENDATION (BOTTOM) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-        <div className="bg-card rounded-xl border border-border p-6 shadow-card hover-lift animate-slide-up">
-          <div className="flex items-center justify-between pb-3 mb-4 border-b border-border">
-            <h2 className="font-semibold flex items-center gap-2 text-lg tracking-tight">
+        {/* AI Recommendation */}
+        <div className="bg-card rounded-xl border border-border p-5 shadow-card">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold flex items-center gap-2 text-base">
               <Sparkles className="h-4 w-4 text-primary" /> AI Recommendation
             </h2>
             <Button variant="ghost" size="sm" onClick={fetchAIRecommendation} disabled={aiLoading}>
@@ -501,16 +479,15 @@ const ScoreResults = () => {
             </Button>
           </div>
           {aiLoading ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-              <Loader2 className="h-4 w-4 animate-spin" /> Generating personalized recommendation...
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+              <Loader2 className="h-4 w-4 animate-spin" /> Generating personalized recommendation…
             </div>
           ) : aiRec ? (
             <p className="text-sm leading-relaxed text-muted-foreground">{aiRec}</p>
           ) : (
-            <p className="text-sm text-muted-foreground">Click refresh to get an AI recommendation.</p>
+            <p className="text-sm text-muted-foreground">Click Refresh to get an AI recommendation.</p>
           )}
         </div>
-
       </div>
     </AppLayout>
   );

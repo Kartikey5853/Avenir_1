@@ -250,8 +250,26 @@ const MapView = () => {
     setCustomLon(null);
     customLayerRef.current?.clearLayers();
     layerGroupRef.current?.clearLayers();
+    facilityLayerRef.current?.clearLayers();
+    setFacilityCounts(null);
+    setFacilityError(null);
+    setFacilityTimedOut(false);
+
     const area = areas.find((a) => String(a.id) === val);
-    if (area) fetchFacilities(area);
+    if (!area) return;
+
+    // Just highlight the area with a circle — no POI fetching
+    const map = mapRef.current;
+    if (map) {
+      if (circleRef.current) { circleRef.current.remove(); circleRef.current = null; }
+      const radius = area.radius_meters || 2000;
+      const circle = L.circle([area.center_lat, area.center_lon], {
+        radius, color: 'hsl(31,100%,71%)', fillColor: 'hsl(31,100%,71%)',
+        fillOpacity: 0.10, weight: 2, dashArray: '8 6',
+      }).addTo(map);
+      circleRef.current = circle;
+      map.flyTo([area.center_lat, area.center_lon], 14, { duration: 1 });
+    }
   };
 
   const handleGenerateScore = () => {
@@ -316,26 +334,9 @@ const MapView = () => {
               </div>
             )}
 
-            {/* Facility counts summary */}
-            {facilityCounts && mode === 'area' && (
-              <div className="border-t border-border pt-3 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nearby Facilities</p>
-                  {facilityLoading && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-                </div>
-                <div className="grid grid-cols-2 gap-1 text-xs">
-                  {Object.entries(facilityCounts).map(([k, v]) => (
-                    <div key={k} className="flex justify-between px-2 py-1 rounded bg-muted/40">
-                      <span className="text-muted-foreground capitalize truncate">{k.replace(/_/g, ' ')}</span>
-                      <span className={`font-bold ml-1 ${v === 0 ? 'text-muted-foreground' : ''}`}>{v}</span>
-                    </div>
-                  ))}
-                </div>
-                <Button variant="outline" size="sm" className="w-full text-xs mt-1" onClick={() => selectedArea && fetchFacilities(selectedArea)} disabled={facilityLoading}>
-                  <RefreshCw className={`h-3 w-3 mr-1.5 ${facilityLoading ? 'animate-spin' : ''}`} /> Refresh Facilities
-                </Button>
-              </div>
-            )}
+            {/* Facility counts summary — removed (area selection now shows score only) */}
+
+
 
             {/* Profile summary */}
             {profile && (
@@ -382,69 +383,8 @@ const MapView = () => {
 
         {/* Map */}
         <div className="flex-1 relative">
+          {/* Map container */}
           <div ref={mapContainerRef} className="h-full w-full" />
-
-          {/* Facility loading overlay */}
-          {facilityLoading && (
-            <div className="absolute inset-0 z-[500] flex items-center justify-center bg-black/55 backdrop-blur-sm pointer-events-none">
-              <div className="bg-card border border-border rounded-2xl shadow-2xl p-7 w-[420px] max-w-[90vw] space-y-5 pointer-events-auto">
-                <div>
-                  <h3 className="font-bold text-base flex items-center gap-2">
-                    <Wifi className="h-4 w-4 text-primary animate-pulse" /> Fetching Facilities
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Racing <strong>4 providers simultaneously</strong> — fastest response wins, rest are cancelled.
-                  </p>
-                </div>
-                <div className="space-y-1.5">
-                  {PROVIDER_STEPS.map((p, i) => (
-                    <div key={p.id} className={`flex items-center gap-3 px-3 py-1.5 rounded-lg border transition-all duration-500 ${i === facilityProviderIdx ? 'border-primary bg-primary/10' : 'border-border opacity-50'}`}>
-                      <div className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${i === facilityProviderIdx ? 'bg-primary animate-pulse' : 'bg-muted-foreground'}`} />
-                      <div className="min-w-0">
-                        <p className={`text-xs font-semibold ${i === facilityProviderIdx ? 'text-primary' : 'text-muted-foreground'}`}>{p.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{p.detail}</p>
-                      </div>
-                      {i === facilityProviderIdx && <Loader2 className="h-3 w-3 animate-spin text-primary ml-auto flex-shrink-0" />}
-                    </div>
-                  ))}
-                </div>
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Querying APIs…</span><span>{facilityProgress}%</span>
-                  </div>
-                  <Progress value={facilityProgress} className="h-1.5" />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Timeout overlay */}
-          {facilityTimedOut && !facilityError && !facilityLoading && (
-            <div className="absolute inset-0 z-[500] flex items-center justify-center bg-black/55 backdrop-blur-sm">
-              <div className="bg-card border border-border rounded-2xl shadow-2xl p-7 w-80 max-w-[90vw] text-center space-y-4">
-                <AlertTriangle className="h-10 w-10 text-yellow-500 mx-auto" />
-                <h3 className="font-bold">Request Timed Out</h3>
-                <p className="text-sm text-muted-foreground">The provider race took longer than expected.</p>
-                <Button onClick={() => selectedArea && fetchFacilities(selectedArea)} className="w-full gradient-warm text-primary-foreground">
-                  <RefreshCw className="h-4 w-4 mr-2" /> Retry
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Error overlay */}
-          {facilityError && !facilityLoading && (
-            <div className="absolute inset-0 z-[500] flex items-center justify-center bg-black/55 backdrop-blur-sm">
-              <div className="bg-card border border-destructive/40 rounded-2xl shadow-2xl p-7 w-80 max-w-[90vw] text-center space-y-4">
-                <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
-                <h3 className="font-bold">Service Error</h3>
-                <p className="text-sm text-muted-foreground">{facilityError}</p>
-                <Button onClick={() => selectedArea && fetchFacilities(selectedArea)} className="w-full gradient-warm text-primary-foreground">
-                  <RefreshCw className="h-4 w-4 mr-2" /> Reload
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </AppLayout>

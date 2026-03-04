@@ -1,14 +1,44 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Briefcase, Heart, Home, ArrowRight, Loader2, SkipForward } from 'lucide-react';
+import { Users, Bus, Sparkles, ShieldCheck, ArrowRight, Loader2, SkipForward } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { createProfile } from '@/services/api';
 
+const QUESTIONS = [
+  {
+    key: 'hasChildren' as const,
+    label: 'Do you have children?',
+    desc: 'Increases weight on schools & parks in your score.',
+    icon: <Users className="h-4 w-4 text-primary" />,
+  },
+  {
+    key: 'reliesOnTransport' as const,
+    label: 'Do you rely on public transport?',
+    desc: 'Increases weight on bus stop coverage.',
+    icon: <Bus className="h-4 w-4 text-primary" />,
+  },
+  {
+    key: 'prefersLifestyle' as const,
+    label: 'Do you prefer a vibrant lifestyle?',
+    desc: 'Increases weight on restaurants & gyms.',
+    icon: <Sparkles className="h-4 w-4 text-primary" />,
+  },
+  {
+    key: 'safetyFirst' as const,
+    label: 'Is safety your top priority?',
+    desc: 'Increases weight on hospitals & police stations.',
+    icon: <ShieldCheck className="h-4 w-4 text-primary" />,
+  },
+];
+
 const ProfileSetup = () => {
-  const [maritalStatus, setMaritalStatus] = useState<string>('single');
-  const [hasParents, setHasParents] = useState<boolean>(false);
-  const [employmentStatus, setEmploymentStatus] = useState<string>('working');
+  const [answers, setAnswers] = useState({
+    hasChildren: false,
+    reliesOnTransport: false,
+    prefersLifestyle: false,
+    safetyFirst: false,
+  });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -17,15 +47,15 @@ const ProfileSetup = () => {
     setLoading(true);
     try {
       await createProfile({
-        marital_status: maritalStatus,
-        has_parents: hasParents,
-        employment_status: employmentStatus,
+        has_children: answers.hasChildren,
+        relies_on_public_transport: answers.reliesOnTransport,
+        prefers_vibrant_lifestyle: answers.prefersLifestyle,
+        safety_priority: answers.safetyFirst,
       });
-      // Update local user data
       const user = JSON.parse(localStorage.getItem('avenir_user') || '{}');
       user.is_profile_completed = true;
       localStorage.setItem('avenir_user', JSON.stringify(user));
-      toast({ title: 'Profile saved!', description: 'Your preferences will personalize your scores.' });
+      toast({ title: 'Profile saved!', description: 'Your preferences will personalise your scores.' });
       navigate('/dashboard');
     } catch (err: any) {
       const msg = err.response?.data?.detail || 'Failed to save profile.';
@@ -44,87 +74,41 @@ const ProfileSetup = () => {
     <div className="min-h-screen flex items-center justify-center gradient-subtle px-4">
       <div className="w-full max-w-lg animate-slide-up">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Tell us about <span className="text-primary">yourself</span></h1>
-          <p className="text-muted-foreground">This helps us personalize your lifestyle scores</p>
+          <h1 className="text-3xl font-bold mb-2">
+            Tell us about <span className="text-primary">yourself</span>
+          </h1>
+          <p className="text-muted-foreground">
+            Your answers change how categories are weighted in your lifestyle score.
+          </p>
         </div>
 
         <div className="bg-card rounded-xl p-8 shadow-card space-y-6 border border-border">
-          {/* Marital Status */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium flex items-center gap-2">
-              <Heart className="h-4 w-4 text-primary" /> Marital Status
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              {['single', 'married'].map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => setMaritalStatus(opt)}
-                  className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all capitalize ${
-                    maritalStatus === opt
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-background text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {opt}
-                </button>
-              ))}
+          {QUESTIONS.map(({ key, label, desc, icon }) => (
+            <div key={key} className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-2">
+                {icon} {label}
+              </label>
+              <p className="text-xs text-muted-foreground">{desc}</p>
+              <div className="grid grid-cols-2 gap-3">
+                {([{ l: 'Yes', v: true }, { l: 'No', v: false }] as const).map(({ l, v }) => (
+                  <button
+                    key={l}
+                    onClick={() => setAnswers((a) => ({ ...a, [key]: v }))}
+                    className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all ${
+                      answers[key] === v
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border bg-background text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          ))}
 
-          {/* Living with Parents */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium flex items-center gap-2">
-              <Home className="h-4 w-4 text-primary" /> Living with Parents?
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: 'Yes', value: true },
-                { label: 'No', value: false },
-              ].map((opt) => (
-                <button
-                  key={opt.label}
-                  onClick={() => setHasParents(opt.value)}
-                  className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all ${
-                    hasParents === opt.value
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-background text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Employment Status */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium flex items-center gap-2">
-              <Briefcase className="h-4 w-4 text-primary" /> Employment Status
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              {['student', 'working', 'unemployed'].map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => setEmploymentStatus(opt)}
-                  className={`px-3 py-3 rounded-lg border text-sm font-medium transition-all capitalize ${
-                    employmentStatus === opt
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-background text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Actions */}
           <div className="flex gap-3 pt-2">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={handleSkip}
-            >
+            <Button variant="outline" className="flex-1" onClick={handleSkip}>
               <SkipForward className="h-4 w-4 mr-2" /> Skip for now
             </Button>
             <Button
@@ -132,7 +116,11 @@ const ProfileSetup = () => {
               onClick={handleSubmit}
               disabled={loading}
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRight className="h-4 w-4 mr-2" />}
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <ArrowRight className="h-4 w-4 mr-2" />
+              )}
               Save & Continue
             </Button>
           </div>

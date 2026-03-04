@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, Lock, Palette, Sun, Moon } from 'lucide-react';
+import { ArrowLeft, Loader2, Lock, Palette, Sun, Moon, ShieldCheck, ShieldOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { changePassword } from '@/services/api';
+import { changePassword, enable2FA, disable2FA } from '@/services/api';
 import AppLayout from '@/components/AppLayout';
 
 type ThemeOption = 'light' | 'dark';
@@ -18,6 +18,15 @@ const Settings = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
+
+  // 2FA
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean>(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('avenir_user') || '{}');
+      return !!u.two_factor_enabled;
+    } catch { return false; }
+  });
+  const [toggling2FA, setToggling2FA] = useState(false);
 
   // Theme
   const [theme, setTheme] = useState<ThemeOption>(() => {
@@ -59,6 +68,32 @@ const Settings = () => {
       toast({ title: 'Error', description: msg, variant: 'destructive' });
     } finally {
       setChangingPassword(false);
+    }
+  };
+
+  const handle2FAToggle = async () => {
+    setToggling2FA(true);
+    try {
+      if (twoFactorEnabled) {
+        await disable2FA();
+        setTwoFactorEnabled(false);
+        const u = JSON.parse(localStorage.getItem('avenir_user') || '{}');
+        u.two_factor_enabled = false;
+        localStorage.setItem('avenir_user', JSON.stringify(u));
+        toast({ title: '2FA Disabled', description: 'Two-factor authentication has been turned off.' });
+      } else {
+        await enable2FA();
+        setTwoFactorEnabled(true);
+        const u = JSON.parse(localStorage.getItem('avenir_user') || '{}');
+        u.two_factor_enabled = true;
+        localStorage.setItem('avenir_user', JSON.stringify(u));
+        toast({ title: '2FA Enabled', description: 'A verification code will be sent to your email each time you sign in.' });
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Failed to update 2FA settings.';
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    } finally {
+      setToggling2FA(false);
     }
   };
 
@@ -186,6 +221,43 @@ const Settings = () => {
             </Button>
           </div>
         </div>
+
+        {/* Two-Factor Authentication */}
+        <div className="bg-card rounded-xl border border-border p-6 shadow-card hover-lift space-y-4 animate-slide-up">
+          <h2 className="font-semibold text-lg tracking-tight pb-3 border-b border-border flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-primary" /> Two-Factor Authentication
+          </h2>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium">Login verification code</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {twoFactorEnabled
+                  ? 'A code will be emailed to you each time you sign in.'
+                  : 'Enable to receive a login code each time you sign in.'}
+              </p>
+            </div>
+            <Button
+              onClick={handle2FAToggle}
+              disabled={toggling2FA}
+              variant="outline"
+              className={`shrink-0 font-semibold border-2 transition-all ${
+                twoFactorEnabled
+                  ? 'border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground'
+                  : 'border-primary text-primary hover:bg-primary hover:text-primary-foreground'
+              }`}
+            >
+              {toggling2FA ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : twoFactorEnabled ? (
+                <ShieldOff className="h-4 w-4 mr-2" />
+              ) : (
+                <ShieldCheck className="h-4 w-4 mr-2" />
+              )}
+              {twoFactorEnabled ? 'Disable 2FA' : 'Enable 2FA'}
+            </Button>
+          </div>
+        </div>
+
       </div>
     </AppLayout>
   );
