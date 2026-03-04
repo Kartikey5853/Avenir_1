@@ -158,6 +158,25 @@ export const compareMarketAreas = (area1: string, area2: string) =>
 export const getMapViewData = (lat: number, lon: number) =>
   api.post('/map-view/data', { lat, lon });
 
+/** Trigger 2FA OTP for a Supabase-authenticated user (uses Supabase Bearer token) */
+export const triggerSupabase2FA = (supabaseToken: string) =>
+  axios.post(
+    `${BASE}/api/users/supabase-trigger-2fa`,
+    {},
+    { headers: { Authorization: `Bearer ${supabaseToken}`, 'Content-Type': 'application/json' } },
+  );
+
+/** Verify 2FA OTP for a Supabase-authenticated user */
+export const verifySupabase2FA = (supabaseToken: string, otp_code: string) =>
+  axios.post(
+    `${BASE}/api/users/supabase-verify-2fa?otp_code=${encodeURIComponent(otp_code)}`,
+    {},
+    { headers: { Authorization: `Bearer ${supabaseToken}`, 'Content-Type': 'application/json' } },
+  );
+
+/** Get current user info — works with both own and Supabase JWTs */
+export const getMe = () => authApi.get('/me');
+
 // ─── Health ────────────────────────────────────────────────────────────────
 
 export const getHealth = () => axios.get(`${BASE}/health`);

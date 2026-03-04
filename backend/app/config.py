@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     # Gemini AI
     GEMINI_API_KEY: str = ""
 
+    # Supabase (for JWT verification)
+    SUPABASE_JWT_SECRET: str = ""
+    SUPABASE_URL:        str = ""
+    SUPABASE_ANON_KEY:   str = ""
+
     class Config:
         env_file = ".env"
 

@@ -399,13 +399,114 @@ def enable_2fa(
     db: Session = Depends(get_db)
 ):
     logging.info(f"Enable 2FA attempt for user: {current_user.email}")
-    if not current_user.email_verified:
-        logging.warning(f"Enable 2FA failed: email not verified for {current_user.email}")
-        raise HTTPException(status_code=400, detail="Verify email first")
     current_user.two_factor_enabled = True
     db.commit()
     logging.info(f"2FA enabled for user: {current_user.email}")
     return {"success": True, "message": "2FA enabled"}
+
+
+# ── Supabase-specific auth endpoints ─────────────────────────────────────────
+
+@router.get("/me")
+def get_me(
+    current_user: User = Depends(get_current_user),
+):
+    """Return current user info — works with both own JWTs and Supabase JWTs."""
+    return {
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email,
+        "two_factor_enabled": current_user.two_factor_enabled,
+        "is_profile_completed": bool(getattr(current_user, "is_profile_completed", False)),
+        "email_verified": current_user.email_verified,
+    }
+
+
+@router.post("/supabase-trigger-2fa")
+def supabase_trigger_2fa(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Called after a successful Supabase sign-in when user has 2FA enabled.
+    Sends a 6-digit OTP email and returns otp_required flag.
+    """
+    if not current_user.two_factor_enabled:
+        return {"otp_required": False}
+
+    db.query(OTP).filter(
+        OTP.user_id == current_user.id,
+        OTP.purpose == "login_2fa",
+    ).delete()
+    db.commit()
+
+    otp_code = generate_otp()
+    otp_entry = OTP(
+        user_id=current_user.id,
+        otp_code=otp_code,
+        purpose="login_2fa",
+        expires_at=datetime.utcnow() + timedelta(minutes=5),
+        attempts=0,
+        locked_until=None,
+    )
+    db.add(otp_entry)
+    db.commit()
+    logging.info(f"Supabase 2FA OTP sent for {current_user.email}")
+
+    try:
+        send_otp_email(current_user.email, otp_code, purpose="login_2fa")
+    except Exception as email_err:
+        logging.error(f"Could not send Supabase 2FA email: {email_err}")
+
+    return {"otp_required": True}
+
+
+@router.post("/supabase-verify-2fa")
+def supabase_verify_2fa(
+    otp_code: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Verify the 2FA OTP for a Supabase-authenticated user.
+    Returns user info on success (frontend keeps the Supabase JWT).
+    """
+    otp_entry = db.query(OTP).filter(
+        OTP.user_id == current_user.id,
+        OTP.purpose == "login_2fa",
+    ).first()
+
+    if not otp_entry:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+
+    if otp_entry.locked_until and otp_entry.locked_until > datetime.utcnow():
+        raise HTTPException(status_code=403, detail="Too many failed attempts. Try again later.")
+
+    if otp_entry.expires_at < datetime.utcnow():
+        db.delete(otp_entry)
+        db.commit()
+        raise HTTPException(status_code=400, detail="OTP expired")
+
+    if otp_code != otp_entry.otp_code:
+        otp_entry.attempts += 1
+        if otp_entry.attempts >= otp_entry.max_attempts:
+            otp_entry.locked_until = datetime.utcnow() + timedelta(minutes=10)
+        db.commit()
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+
+    db.delete(otp_entry)
+    db.commit()
+    logging.info(f"Supabase 2FA verified for {current_user.email}")
+
+    return {
+        "success": True,
+        "user": {
+            "id": current_user.id,
+            "name": current_user.name,
+            "email": current_user.email,
+            "is_profile_completed": bool(getattr(current_user, "is_profile_completed", False)),
+        },
+    }
 
 
 @router.post("/disable-2fa")
