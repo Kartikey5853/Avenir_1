@@ -1,0 +1,647 @@
+{
+  "city": "Hyderabad",
+  "property_type": "2BHK",
+  "listings": [
+
+    {
+      "area": "Gachibowli",
+      "project_name": "DLF Cyber City Residences",
+      "rent": 75000,
+      "sqft": 1200,
+      "rent_per_sqft": 62.5,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Gachibowli",
+      "project_name": "Prestige Sky Vista",
+      "rent": 90000,
+      "sqft": 1500,
+      "rent_per_sqft": 60,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Gachibowli",
+      "project_name": "Aparna Westside",
+      "rent": 65000,
+      "sqft": 1100,
+      "rent_per_sqft": 59,
+      "furnishing": "Semi-Furnished"
+    },
+    {
+      "area": "Gachibowli",
+      "project_name": "Lodha Meridian",
+      "rent": 82000,
+      "sqft": 1350,
+      "rent_per_sqft": 60.7,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Gachibowli",
+      "project_name": "Purva Skywood",
+      "rent": 58000,
+      "sqft": 1080,
+      "rent_per_sqft": 53.7,
+      "furnishing": "Semi-Furnished"
+    },
+    {
+      "area": "Gachibowli",
+      "project_name": "Sobha HRC Pristine",
+      "rent": 95000,
+      "sqft": 1620,
+      "rent_per_sqft": 58.6,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Gachibowli",
+      "project_name": "Vasavi Green Dale",
+      "rent": 48000,
+      "sqft": 950,
+      "rent_per_sqft": 50.5,
+      "furnishing": "Unknown"
+    },
+
+   
+    {
+      "area": "Madhapur",
+      "project_name": "Swamy Ayyappa Society",
+      "rent": 36000,
+      "sqft": 1200,
+      "rent_per_sqft": 30,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Madhapur",
+      "project_name": "Sri Ganesh RVB Residency",
+      "rent": 38000,
+      "sqft": 1100,
+      "rent_per_sqft": 34,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Madhapur",
+      "project_name": "Hi Tec Residency",
+      "rent": 40000,
+      "sqft": 1400,
+      "rent_per_sqft": 28,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Madhapur",
+      "project_name": "Chandana Nilayam",
+      "rent": 30000,
+      "sqft": 1200,
+      "rent_per_sqft": 25,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Madhapur",
+      "project_name": "Aditya Cyber Heights",
+      "rent": 52000,
+      "sqft": 1300,
+      "rent_per_sqft": 40,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Madhapur",
+      "project_name": "Rainbow Vistas Rock Garden",
+      "rent": 45000,
+      "sqft": 1250,
+      "rent_per_sqft": 36,
+      "furnishing": "Semi-Furnished"
+    },
+    {
+      "area": "Madhapur",
+      "project_name": "NSL Arena",
+      "rent": 42000,
+      "sqft": 1180,
+      "rent_per_sqft": 35.6,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Madhapur",
+      "project_name": "Lakshmaiah Tower",
+      "rent": 28000,
+      "sqft": 1050,
+      "rent_per_sqft": 26.7,
+      "furnishing": "Unknown"
+    },
+
+   
+
+    {
+      "area": "Kondapur",
+      "project_name": "Aparna Serene Park",
+      "rent": 58000,
+      "sqft": 1295,
+      "rent_per_sqft": 45,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Kondapur",
+      "project_name": "Masjid Banda",
+      "rent": 45000,
+      "sqft": 1050,
+      "rent_per_sqft": 43,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Kondapur",
+      "project_name": "Raja Rajeswari Nagar",
+      "rent": 38000,
+      "sqft": 1210,
+      "rent_per_sqft": 31,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Kondapur",
+      "project_name": "Sai Nilayam",
+      "rent": 32000,
+      "sqft": 1150,
+      "rent_per_sqft": 27,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Kondapur",
+      "project_name": "Kondapur Sri Hari Nagar",
+      "rent": 36200,
+      "sqft": 1300,
+      "rent_per_sqft": 27.8,
+      "furnishing": "Verified"
+    },
+    {
+      "area": "Kondapur",
+      "project_name": "Trendset Towers",
+      "rent": 62000,
+      "sqft": 1420,
+      "rent_per_sqft": 43.7,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Kondapur",
+      "project_name": "Indiabulls Greens",
+      "rent": 55000,
+      "sqft": 1280,
+      "rent_per_sqft": 43,
+      "furnishing": "Semi-Furnished"
+    },
+    {
+      "area": "Kondapur",
+      "project_name": "Vasavi Oakwood",
+      "rent": 41000,
+      "sqft": 1100,
+      "rent_per_sqft": 37.3,
+      "furnishing": "Unknown"
+    },
+
+    {
+      "area": "Kukatpally",
+      "project_name": "Pragathi Nagar JNCU",
+      "rent": 18000,
+      "sqft": 750,
+      "rent_per_sqft": 24,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Kukatpally",
+      "project_name": "Baba Nilayam",
+      "rent": 14000,
+      "sqft": 1400,
+      "rent_per_sqft": 10,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Kukatpally",
+      "project_name": "Abodes Green Ridge Apartments",
+      "rent": 25000,
+      "sqft": 1000,
+      "rent_per_sqft": 25,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Kukatpally",
+      "project_name": "Balaji Nagar",
+      "rent": 29000,
+      "sqft": 1280,
+      "rent_per_sqft": 22,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Kukatpally",
+      "project_name": "Sri Sai Nilayam",
+      "rent": 28000,
+      "sqft": 1100,
+      "rent_per_sqft": 25,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Kukatpally",
+      "project_name": "KPHB Colony Phase 5",
+      "rent": 22000,
+      "sqft": 950,
+      "rent_per_sqft": 23.2,
+      "furnishing": "Semi-Furnished"
+    },
+    {
+      "area": "Kukatpally",
+      "project_name": "Cyber Meadows",
+      "rent": 32000,
+      "sqft": 1200,
+      "rent_per_sqft": 26.7,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Kukatpally",
+      "project_name": "VV Nagar Residency",
+      "rent": 19500,
+      "sqft": 820,
+      "rent_per_sqft": 23.8,
+      "furnishing": "Unknown"
+    },
+
+    {
+      "area": "LB Nagar",
+      "project_name": "Sai Seemandhar",
+      "rent": 17000,
+      "sqft": 1100,
+      "rent_per_sqft": 15,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "LB Nagar",
+      "project_name": "Bapu Nagar Independent House",
+      "rent": 35000,
+      "sqft": 2160,
+      "rent_per_sqft": 16,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "LB Nagar",
+      "project_name": "LB Nagar Karuna Residency",
+      "rent": 15000,
+      "sqft": 810,
+      "rent_per_sqft": 18.5,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "LB Nagar",
+      "project_name": "Amaravati Towers",
+      "rent": 20000,
+      "sqft": 1050,
+      "rent_per_sqft": 19,
+      "furnishing": "Semi-Furnished"
+    },
+    {
+      "area": "LB Nagar",
+      "project_name": "Vivekananda Residency",
+      "rent": 16500,
+      "sqft": 900,
+      "rent_per_sqft": 18.3,
+      "furnishing": "Unknown"
+    },
+
+    {
+      "area": "HITEC City",
+      "project_name": "Lemon Tree Suites",
+      "rent": 95000,
+      "sqft": 1600,
+      "rent_per_sqft": 59.4,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "HITEC City",
+      "project_name": "Cybertower Elites",
+      "rent": 78000,
+      "sqft": 1350,
+      "rent_per_sqft": 57.8,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "HITEC City",
+      "project_name": "Salarpuria Sattva Knowledge City",
+      "rent": 68000,
+      "sqft": 1250,
+      "rent_per_sqft": 54.4,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "HITEC City",
+      "project_name": "NSL Nakshatra",
+      "rent": 55000,
+      "sqft": 1180,
+      "rent_per_sqft": 46.6,
+      "furnishing": "Semi-Furnished"
+    },
+    {
+      "area": "HITEC City",
+      "project_name": "My Home Mangalam",
+      "rent": 62000,
+      "sqft": 1300,
+      "rent_per_sqft": 47.7,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "HITEC City",
+      "project_name": "VRR Residency",
+      "rent": 48000,
+      "sqft": 1050,
+      "rent_per_sqft": 45.7,
+      "furnishing": "Semi-Furnished"
+    },
+
+    {
+      "area": "Banjara Hills",
+      "project_name": "Prestige Obelisk",
+      "rent": 115000,
+      "sqft": 1800,
+      "rent_per_sqft": 63.9,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Banjara Hills",
+      "project_name": "Aparna Sarovar Zenith",
+      "rent": 98000,
+      "sqft": 1650,
+      "rent_per_sqft": 59.4,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Banjara Hills",
+      "project_name": "Amrutha Castle",
+      "rent": 85000,
+      "sqft": 1450,
+      "rent_per_sqft": 58.6,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Banjara Hills",
+      "project_name": "Road No 12 Heights",
+      "rent": 72000,
+      "sqft": 1300,
+      "rent_per_sqft": 55.4,
+      "furnishing": "Semi-Furnished"
+    },
+    {
+      "area": "Banjara Hills",
+      "project_name": "Meridian Towers",
+      "rent": 65000,
+      "sqft": 1200,
+      "rent_per_sqft": 54.2,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Banjara Hills",
+      "project_name": "Lotus Bliss",
+      "rent": 55000,
+      "sqft": 1100,
+      "rent_per_sqft": 50,
+      "furnishing": "Semi-Furnished"
+    },
+
+    {
+      "area": "Jubilee Hills",
+      "project_name": "Trendset Nilaya",
+      "rent": 110000,
+      "sqft": 1750,
+      "rent_per_sqft": 62.9,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Jubilee Hills",
+      "project_name": "Blueprint JH Royale",
+      "rent": 92000,
+      "sqft": 1580,
+      "rent_per_sqft": 58.2,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Jubilee Hills",
+      "project_name": "Sai Rajath Residency",
+      "rent": 78000,
+      "sqft": 1400,
+      "rent_per_sqft": 55.7,
+      "furnishing": "Semi-Furnished"
+    },
+    {
+      "area": "Jubilee Hills",
+      "project_name": "Vasantha Heights",
+      "rent": 62000,
+      "sqft": 1230,
+      "rent_per_sqft": 50.4,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Jubilee Hills",
+      "project_name": "Green Fields Colony",
+      "rent": 55000,
+      "sqft": 1150,
+      "rent_per_sqft": 47.8,
+      "furnishing": "Semi-Furnished"
+    },
+
+    {
+      "area": "Begumpet",
+      "project_name": "Greenland Apartments",
+      "rent": 42000,
+      "sqft": 1100,
+      "rent_per_sqft": 38.2,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Begumpet",
+      "project_name": "Prashanthi Nilayam Residency",
+      "rent": 35000,
+      "sqft": 980,
+      "rent_per_sqft": 35.7,
+      "furnishing": "Semi-Furnished"
+    },
+    {
+      "area": "Begumpet",
+      "project_name": "Surya Towers",
+      "rent": 48000,
+      "sqft": 1250,
+      "rent_per_sqft": 38.4,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Begumpet",
+      "project_name": "Brindavan Enclave",
+      "rent": 32000,
+      "sqft": 900,
+      "rent_per_sqft": 35.6,
+      "furnishing": "Unknown"
+    },
+
+    {
+      "area": "Secunderabad",
+      "project_name": "Spoorthy Grand Towers",
+      "rent": 28000,
+      "sqft": 1050,
+      "rent_per_sqft": 26.7,
+      "furnishing": "Semi-Furnished"
+    },
+    {
+      "area": "Secunderabad",
+      "project_name": "Trimulgherry Heights",
+      "rent": 25000,
+      "sqft": 950,
+      "rent_per_sqft": 26.3,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Secunderabad",
+      "project_name": "Paradise Colony Residency",
+      "rent": 32000,
+      "sqft": 1150,
+      "rent_per_sqft": 27.8,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Secunderabad",
+      "project_name": "Eastern Towers SD Colony",
+      "rent": 22000,
+      "sqft": 870,
+      "rent_per_sqft": 25.3,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Secunderabad",
+      "project_name": "Mahesh Elegance",
+      "rent": 30000,
+      "sqft": 1100,
+      "rent_per_sqft": 27.3,
+      "furnishing": "Semi-Furnished"
+    },
+
+    {
+      "area": "Ameerpet",
+      "project_name": "Sanjeevani Residency",
+      "rent": 30000,
+      "sqft": 1000,
+      "rent_per_sqft": 30,
+      "furnishing": "Semi-Furnished"
+    },
+    {
+      "area": "Ameerpet",
+      "project_name": "Metro Plaza Apartments",
+      "rent": 34000,
+      "sqft": 1100,
+      "rent_per_sqft": 30.9,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Ameerpet",
+      "project_name": "Kakatiya Residency",
+      "rent": 26000,
+      "sqft": 900,
+      "rent_per_sqft": 28.9,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Ameerpet",
+      "project_name": "Srinivasa Nilayam",
+      "rent": 29000,
+      "sqft": 1050,
+      "rent_per_sqft": 27.6,
+      "furnishing": "Unknown"
+    },
+
+    {
+      "area": "Miyapur",
+      "project_name": "Vasavi's Oakwood",
+      "rent": 22000,
+      "sqft": 1000,
+      "rent_per_sqft": 22,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Miyapur",
+      "project_name": "Cybercity Metro Homes",
+      "rent": 28000,
+      "sqft": 1150,
+      "rent_per_sqft": 24.3,
+      "furnishing": "Semi-Furnished"
+    },
+    {
+      "area": "Miyapur",
+      "project_name": "JNTU Colony Phase 2",
+      "rent": 18500,
+      "sqft": 850,
+      "rent_per_sqft": 21.8,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Miyapur",
+      "project_name": "Green Valley Apartments",
+      "rent": 25000,
+      "sqft": 1100,
+      "rent_per_sqft": 22.7,
+      "furnishing": "Semi-Furnished"
+    },
+
+    {
+      "area": "Nallagandla",
+      "project_name": "My Home Avatar",
+      "rent": 52000,
+      "sqft": 1250,
+      "rent_per_sqft": 41.6,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Nallagandla",
+      "project_name": "Phoenix Trivium",
+      "rent": 65000,
+      "sqft": 1400,
+      "rent_per_sqft": 46.4,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Nallagandla",
+      "project_name": "Rainbow Vistas Sai Sampada",
+      "rent": 45000,
+      "sqft": 1150,
+      "rent_per_sqft": 39.1,
+      "furnishing": "Semi-Furnished"
+    },
+    {
+      "area": "Nallagandla",
+      "project_name": "Trendset Siri",
+      "rent": 38000,
+      "sqft": 1050,
+      "rent_per_sqft": 36.2,
+      "furnishing": "Unknown"
+    },
+
+    {
+      "area": "Manikonda",
+      "project_name": "Aparna Cyber Life",
+      "rent": 35000,
+      "sqft": 1150,
+      "rent_per_sqft": 30.4,
+      "furnishing": "Furnished"
+    },
+    {
+      "area": "Manikonda",
+      "project_name": "Manjeera Diamond Towers",
+      "rent": 28000,
+      "sqft": 1020,
+      "rent_per_sqft": 27.5,
+      "furnishing": "Semi-Furnished"
+    },
+    {
+      "area": "Manikonda",
+      "project_name": "Shri Ram Residency",
+      "rent": 22000,
+      "sqft": 900,
+      "rent_per_sqft": 24.4,
+      "furnishing": "Unknown"
+    },
+    {
+      "area": "Manikonda",
+      "project_name": "My Home Tridasa",
+      "rent": 45000,
+      "sqft": 1300,
+      "rent_per_sqft": 34.6,
+      "furnishing": "Furnished"
+    }
+  ]
+}
