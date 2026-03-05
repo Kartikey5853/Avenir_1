@@ -148,7 +148,7 @@ app.include_router(market.router, prefix="/api", tags=["Market"])
 # Health Check Route (Production Must)
 # ----------------------------------
 
-@app.get("/health", tags=["Health"])
+@app.get("/health", methods=["GET", "HEAD"], tags=["Health"])
 async def health_check():
     logging.info("Health endpoint was called")
     return {
